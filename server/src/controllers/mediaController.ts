@@ -82,9 +82,23 @@ export const updateMedia = async (req: AuthenticatedRequest, res: Response, next
         data: { tag: "FEATURED" },
       });
     }
-    const item = await prisma.mediaItem.update({
+    const item = await prisma.mediaItem.upsert({
       where: { id },
-      data,
+      update: data,
+      create: {
+        id,
+        title: data.title || "Untitled Media",
+        type: data.type || "VIDEOS",
+        game: data.game || "FREE FIRE MAX",
+        views: data.views || "10K VIEWS",
+        date: data.date || "RECENT",
+        tag: data.tag || "FEATURED",
+        youtubeId: data.youtubeId || null,
+        thumbnail: data.thumbnail || null,
+        duration: data.duration || null,
+        featured: data.featured || false,
+        description: data.description || null,
+      },
     });
     res.json({ success: true, message: "Media item updated successfully", data: item });
   } catch (error) {
@@ -95,7 +109,14 @@ export const updateMedia = async (req: AuthenticatedRequest, res: Response, next
 export const deleteMedia = async (_req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = _req.params;
-    await prisma.mediaItem.delete({ where: { id } });
+    try {
+      await prisma.mediaItem.delete({ where: { id } });
+    } catch (err: any) {
+      // P2025: Record to delete does not exist (already deleted or mock ID)
+      if (err.code !== "P2025") {
+        throw err;
+      }
+    }
     res.json({ success: true, message: "Media item deleted successfully" });
   } catch (error) {
     next(error);

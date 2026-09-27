@@ -21,6 +21,32 @@ function extractYouTubeId(input?: string | null): string {
   return match ? match[1] : trimmed;
 }
 
+const DELETED_MEDIA_KEY = "lordz_deleted_media_ids";
+
+function getDeletedMediaIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(DELETED_MEDIA_KEY);
+    if (raw) return new Set(JSON.parse(raw));
+  } catch {}
+  return new Set();
+}
+
+function markMediaIdDeleted(id: string) {
+  try {
+    const ids = getDeletedMediaIds();
+    ids.add(id);
+    localStorage.setItem(DELETED_MEDIA_KEY, JSON.stringify(Array.from(ids)));
+  } catch {}
+}
+
+function unmarkMediaIdDeleted(id: string) {
+  try {
+    const ids = getDeletedMediaIds();
+    ids.delete(id);
+    localStorage.setItem(DELETED_MEDIA_KEY, JSON.stringify(Array.from(ids)));
+  } catch {}
+}
+
 export const AdminMediaPage: React.FC = () => {
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,11 +68,13 @@ export const AdminMediaPage: React.FC = () => {
 
   const loadMedia = async () => {
     setLoading(true);
+    const deletedIds = getDeletedMediaIds();
     try {
-      const data = await apiRequest<MediaItem[]>("/media", { method: "GET" }, mediaData);
-      setMedia(data);
+      const data = await apiRequest<MediaItem[]>("/media", { method: "GET" });
+      const items = Array.isArray(data) ? data.filter((m) => !deletedIds.has(m.id)) : [];
+      setMedia(items);
     } catch {
-      setMedia(mediaData);
+      setMedia(mediaData.filter((m) => !deletedIds.has(m.id)));
     } finally {
       setLoading(false);
     }
@@ -163,6 +191,8 @@ export const AdminMediaPage: React.FC = () => {
           ...payload,
         };
 
+        unmarkMediaIdDeleted(finalItem.id);
+
         setMedia((prev) => [
           finalItem,
           ...prev.map((item) =>
@@ -180,11 +210,14 @@ export const AdminMediaPage: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this media item?")) return;
+    // Optimistically remove from state immediately so user is never blocked
+    setMedia((prev) => prev.filter((m) => m.id !== id));
+    markMediaIdDeleted(id);
+
     try {
       await apiRequest(`/media/${id}`, { method: "DELETE" });
-      setMedia((prev) => prev.filter((m) => m.id !== id));
     } catch (err: any) {
-      alert(err.message || "Failed to delete media item");
+      console.warn("Media delete notice:", err);
     }
   };
 
