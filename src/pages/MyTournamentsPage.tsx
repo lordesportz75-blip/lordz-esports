@@ -188,11 +188,19 @@ export const MyTournamentsPage: React.FC = () => {
         const targetId = tId || slug;
         if (targetId) {
           try {
-            const res = await getMyRoomAccess(targetId);
-            if (res?.success && res.data) {
-              if (tId) map[tId] = res.data;
-              if (slug) map[slug] = res.data;
-              if (item.tournament?.id) map[item.tournament.id] = res.data;
+            const res: any = await getMyRoomAccess(targetId);
+            const data =
+              res?.data !== undefined
+                ? res.data
+                : res?.roomId !== undefined || res?.hasAccess !== undefined || res?.isRegistered
+                ? res
+                : null;
+            if (data) {
+              if (tId) map[tId] = data;
+              if (slug) map[slug] = data;
+              if (item.tournament?.id) map[item.tournament.id] = data;
+              if (item.tournamentId) map[item.tournamentId] = data;
+              if (item.id) map[item.id] = data;
             }
           } catch (e) {}
         }
@@ -204,12 +212,18 @@ export const MyTournamentsPage: React.FC = () => {
   const handleLoadMatches = async (tournamentId: string) => {
     setFetchingMatches((prev) => ({ ...prev, [tournamentId]: true }));
     try {
-      const roomRes = await getMyRoomAccess(tournamentId);
-      if (roomRes?.success && roomRes.data) {
+      const roomRes: any = await getMyRoomAccess(tournamentId);
+      const data =
+        roomRes?.data !== undefined
+          ? roomRes.data
+          : roomRes?.roomId !== undefined || roomRes?.hasAccess !== undefined || roomRes?.isRegistered
+          ? roomRes
+          : null;
+      if (data) {
         setRoomAccessByTournament((prev) => ({
           ...prev,
-          [tournamentId]: roomRes.data,
-          ...(roomRes.data.tournamentId ? { [roomRes.data.tournamentId]: roomRes.data } : {}),
+          [tournamentId]: data,
+          ...(data.tournamentId ? { [data.tournamentId]: data } : {}),
         }));
       }
     } catch (err) {
@@ -830,8 +844,11 @@ export const MyTournamentsPage: React.FC = () => {
                         {/* Room Credentials & Match Contender Module */}
                         {(() => {
                           const roomAccess =
-                            roomAccessByTournament[tournament.id] ||
-                            (tournament.slug ? roomAccessByTournament[tournament.slug] : null);
+                            (tournament?.id ? roomAccessByTournament[tournament.id] : null) ||
+                            (tournament?.slug ? roomAccessByTournament[tournament.slug] : null) ||
+                            (item?.id ? roomAccessByTournament[item.id] : null) ||
+                            ((item as any)?.tournamentId ? roomAccessByTournament[(item as any).tournamentId] : null) ||
+                            (teamId ? roomAccessByTournament[teamId] : null);
                           if (!roomAccess) {
                             return (
                               <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 space-y-3">
@@ -839,7 +856,7 @@ export const MyTournamentsPage: React.FC = () => {
                                   <p className="text-[10px] font-mono text-gray-400 uppercase">CUSTOM ROOM CREDENTIALS</p>
                                   <button
                                     type="button"
-                                    onClick={() => handleLoadMatches(tournament.id)}
+                                    onClick={() => handleLoadMatches(tournament.id || tournament.slug || item.id)}
                                     disabled={fetchingMatches[tournament.id]}
                                     className="text-[10px] font-heading font-bold text-[#FFBE32] hover:underline uppercase flex items-center gap-1 cursor-pointer"
                                   >
@@ -863,7 +880,10 @@ export const MyTournamentsPage: React.FC = () => {
                           const selRoundId = selectedRoundByTournament[tournament.id] || roomAccess.roundId;
                           let currentRound = roomAccess;
                           if (roomAccess.allAssignedRounds?.length) {
-                            const found = roomAccess.allAssignedRounds.find((r: any) => r.roundId === selRoundId);
+                            const found =
+                              roomAccess.allAssignedRounds.find((r: any) => r.roundId === selRoundId) ||
+                              roomAccess.allAssignedRounds.find((r: any) => Boolean(r.roomId)) ||
+                              roomAccess.allAssignedRounds[0];
                             if (found) {
                               const isPub = Boolean(found.isPublished || found.credentialsPublished || found.roomId);
                               const isElim = found.teamStatus === "ELIMINATED" || found.status === "ELIMINATED" || Boolean(found.isEliminated);

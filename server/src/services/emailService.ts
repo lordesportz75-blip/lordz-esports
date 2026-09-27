@@ -385,3 +385,185 @@ export async function sendWelcomeEmail(
   }
 }
 
+export interface RoomCredentialsEmailData {
+  leaderEmail: string;
+  leaderName: string;
+  teamName: string;
+  tournamentTitle: string;
+  roundName: string;
+  roomId: string;
+  roomPassword: string;
+  map?: string;
+  roomTime?: string;
+  slotNumber?: number | string;
+  customNotes?: string;
+}
+
+/**
+ * Send Custom Match Room Credentials to Team Leader via Resend
+ */
+export async function sendRoomCredentialsEmail(
+  data: RoomCredentialsEmailData
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const resend = getResendClient();
+  const fromEmail = getEffectiveFromEmail();
+  const replyTo = process.env.REPLY_TO_EMAIL || "lordesportz75@gmail.com";
+
+  console.log(`\n======================================================`);
+  console.log(`🎮 [ROOM CREDENTIALS EMAIL] Sending credentials to: ${data.leaderEmail}`);
+  console.log(`🎮 [ROOM CREDENTIALS EMAIL] Team: ${data.teamName} | Leader: ${data.leaderName}`);
+  console.log(`🎮 [ROOM CREDENTIALS EMAIL] Tournament: ${data.tournamentTitle} (${data.roundName})`);
+  console.log(`🎮 [ROOM CREDENTIALS EMAIL] Room ID: ${data.roomId} | Password: ${data.roomPassword}`);
+  console.log(`======================================================\n`);
+
+  if (!resend) {
+    console.warn("⚠️ [Resend] Resend API key is not configured. Email logged to console.");
+    return { success: true };
+  }
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Match Room Credentials — ${data.tournamentTitle}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #050508; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #FFFFFF;">
+  <div style="background-color: #050508; padding: 40px 16px;">
+    <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #0C0C12; border: 1px solid #262635; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.8);">
+      <!-- HEADER -->
+      <tr>
+        <td style="padding: 36px 32px 24px 32px; background: linear-gradient(180deg, #181824 0%, #0C0C12 100%); text-align: center; border-bottom: 2px solid #FFBE32;">
+          <div style="display: inline-block; padding: 6px 14px; border-radius: 30px; background: rgba(255, 190, 50, 0.15); border: 1px solid rgba(255, 190, 50, 0.4); margin-bottom: 16px;">
+            <span style="font-size: 11px; font-weight: 800; letter-spacing: 2px; color: #FFBE32; text-transform: uppercase;">OFFICIAL MATCH ROOM DISPATCH</span>
+          </div>
+          <h1 style="margin: 0 0 8px 0; font-size: 26px; font-weight: 900; letter-spacing: 1px; color: #FFFFFF; text-transform: uppercase;">
+            ROOM CREDENTIALS ARE LIVE! 🎮
+          </h1>
+          <p style="margin: 0; font-size: 14px; color: #9CA3AF;">
+            ${data.tournamentTitle} • <strong style="color: #FFBE32;">${data.roundName}</strong>
+          </p>
+        </td>
+      </tr>
+
+      <!-- BODY -->
+      <tr>
+        <td style="padding: 32px;">
+          <p style="margin: 0 0 20px 0; font-size: 15px; line-height: 1.6; color: #D1D5DB;">
+            Greetings Captain <strong style="color: #FFFFFF;">${data.leaderName}</strong>,
+          </p>
+          <p style="margin: 0 0 24px 0; font-size: 14px; line-height: 1.6; color: #9CA3AF;">
+            The custom match lobby for squad <strong style="color: #FFBE32;">${data.teamName}</strong> is now open. Below are your official Free Fire custom room credentials. Please ensure your squad is joined and seated before the match timer expires.
+          </p>
+
+          <!-- CREDENTIALS BOX -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="background: linear-gradient(135deg, rgba(255, 190, 50, 0.1) 0%, rgba(20, 20, 30, 0.8) 100%); border: 2px solid #FFBE32; border-radius: 16px; margin: 0 0 24px 0; overflow: hidden;">
+            <tr>
+              <td style="padding: 20px 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
+                <div style="font-size: 11px; font-weight: 800; letter-spacing: 1.5px; color: #9CA3AF; text-transform: uppercase; margin-bottom: 6px;">ASSIGNED SQUAD SLOT</div>
+                <div style="font-size: 18px; font-weight: 900; color: #22C55E;">SLOT #${data.slotNumber || 1}</div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 24px;">
+                <table width="100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td width="50%" style="padding-right: 12px; vertical-align: top;">
+                      <div style="background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 16px; text-align: center;">
+                        <span style="font-size: 11px; font-weight: 700; color: #9CA3AF; letter-spacing: 1px; text-transform: uppercase; display: block; margin-bottom: 8px;">ROOM ID</span>
+                        <span style="font-size: 24px; font-weight: 900; letter-spacing: 2px; color: #FFFFFF; font-family: monospace;">${data.roomId}</span>
+                      </div>
+                    </td>
+                    <td width="50%" style="padding-left: 12px; vertical-align: top;">
+                      <div style="background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 16px; text-align: center;">
+                        <span style="font-size: 11px; font-weight: 700; color: #9CA3AF; letter-spacing: 1px; text-transform: uppercase; display: block; margin-bottom: 8px;">PASSWORD</span>
+                        <span style="font-size: 24px; font-weight: 900; letter-spacing: 2px; color: #FFBE32; font-family: monospace;">${data.roomPassword}</span>
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 16px 24px; background: rgba(0, 0, 0, 0.4); border-top: 1px solid rgba(255, 255, 255, 0.08);">
+                <table width="100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="font-size: 12px; color: #9CA3AF; font-family: monospace;">
+                      MAP: <strong style="color: #FFBE32; text-transform: uppercase;">${data.map || "BERMUDA"}</strong>
+                    </td>
+                    <td align="right" style="font-size: 12px; color: #9CA3AF; font-family: monospace;">
+                      TIME: <strong style="color: #FFFFFF;">${data.roomTime || "AS SCHEDULED"}</strong>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+
+          ${data.customNotes ? `
+          <div style="background: rgba(255, 255, 255, 0.04); border-left: 3px solid #FFBE32; border-radius: 6px; padding: 14px 18px; margin-bottom: 24px;">
+            <p style="margin: 0; font-size: 12px; color: #E5E7EB; line-height: 1.6;">
+              📌 <strong style="color: #FFBE32;">Special Instructions:</strong> ${data.customNotes}
+            </p>
+          </div>
+          ` : ""}
+
+          <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 28px;">
+            <p style="margin: 0; font-size: 12px; color: #FCA5A5; line-height: 1.6;">
+              ⚠️ <strong>Strict Competitive Rules:</strong> Only enter your assigned <strong>Slot #${data.slotNumber || 1}</strong>. Entering any other team's slot will result in immediate kick and possible squad disqualification. Do NOT leak or share room credentials outside your roster.
+            </p>
+          </div>
+
+          <!-- CTA BUTTON -->
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td align="center">
+                <a href="https://lordesportz.com/my-tournaments" target="_blank" style="display: inline-block; background-color: #FFBE32; color: #000000; font-size: 13px; font-weight: 900; letter-spacing: 1.5px; text-transform: uppercase; text-decoration: none; padding: 16px 36px; border-radius: 12px; box-shadow: 0 4px 20px rgba(255, 190, 50, 0.4);">
+                  VIEW ON ATHLETE DASHBOARD →
+                </a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <!-- FOOTER -->
+      <tr>
+        <td style="padding: 24px; text-align: center; font-size: 11px; color: #6B7280; border-top: 1px solid #1C1C24;">
+          <p style="margin: 0 0 4px 0; font-weight: 700; color: #9CA3AF; text-transform: uppercase;">
+            © ${new Date().getFullYear()} LORD ESPORTZ. ALL RIGHTS RESERVED.
+          </p>
+          <p style="margin: 0; color: #4B5563;">
+            Official Match Room Dispatch for competitive registered athletes.
+          </p>
+        </td>
+      </tr>
+    </table>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  try {
+    const { data: resendData, error } = await resend.emails.send({
+      from: fromEmail,
+      replyTo: replyTo,
+      to: [data.leaderEmail],
+      subject: `🎮 Room Credentials Live: ${data.tournamentTitle} - ${data.roundName} (Room ID: ${data.roomId})`,
+      html: htmlContent,
+    });
+
+    if (error) {
+      console.warn(`⚠️ [Resend] Room credentials email warning (${data.leaderEmail}):`, error.message);
+      return { success: true, error: error.message };
+    }
+
+    console.log(`✅ [Resend] Room credentials email dispatched to ${data.leaderEmail} (ID: ${resendData?.id})`);
+    return { success: true, messageId: resendData?.id };
+  } catch (err: any) {
+    console.error(`❌ [Resend] Exception sending room credentials email to ${data.leaderEmail}:`, err.message);
+    return { success: true, error: err.message };
+  }
+}
+
+

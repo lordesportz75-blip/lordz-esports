@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { prisma } from "../config/prisma.js";
 import { AuthenticatedRequest } from "../middleware/auth.js";
+import { sendRoomCredentialsEmail } from "../services/emailService.js";
 
 // ================= VALIDATION SCHEMAS =================
 
@@ -4177,13 +4178,23 @@ export const updateRoundCredentials = async (req: AuthenticatedRequest, res: Res
       if (!updatedRound) updatedRound = memObj;
     }
 
-    // Broadcast in-app notifications to registered players if credentials are published
+    // Broadcast in-app notifications and send room credentials email to team leaders
     if (isPublished && cleanRoomId) {
       try {
         const regs = await prisma.tournamentRegistration.findMany({
           where: { tournamentId: resolvedTournamentId },
-          select: { submittedById: true },
+          include: {
+            tournament: { select: { title: true } },
+            team: {
+              include: {
+                leader: { select: { email: true, ign: true, username: true } },
+              },
+            },
+            submittedBy: { select: { email: true, ign: true, username: true } },
+          },
         });
+
+        // 1. In-app notifications
         const userIds = Array.from(new Set(regs.map((r) => r.submittedById).filter(Boolean)));
         for (const uid of userIds) {
           await prisma.notification.create({
@@ -4195,6 +4206,62 @@ export const updateRoundCredentials = async (req: AuthenticatedRequest, res: Res
               metadata: JSON.stringify({ tournamentId: resolvedTournamentId, roundId: targetId, roomId: cleanRoomId }),
             },
           }).catch(() => {});
+        }
+
+        // 2. Automatically dispatch Room Credentials Email to team leaders
+        for (const reg of regs) {
+          const leaderEmail = reg.captainEmail || reg.team?.leader?.email || reg.submittedBy?.email;
+          const leaderName =
+            reg.captainName ||
+            reg.captainIgn ||
+            reg.team?.leader?.ign ||
+            reg.team?.leader?.username ||
+            reg.submittedBy?.ign ||
+            "Team Leader";
+          const teamName = reg.teamName || reg.team?.teamName || "Your Squad";
+
+          if (leaderEmail) {
+            sendRoomCredentialsEmail({
+              leaderEmail,
+              leaderName,
+              teamName,
+              tournamentTitle: reg.tournament?.title || (tournament as any)?.title || "Free Fire Tournament",
+              roundName: round.name || "ROUND 1",
+              roomId: cleanRoomId,
+              roomPassword: cleanRoomPassword,
+              map: updatedMeta.map || "BERMUDA",
+              roomTime: updatedMeta.roomTime || "",
+              slotNumber: reg.slotNumber || 1,
+              customNotes: updatedMeta.customNotes || "",
+            }).catch((err) => console.warn(`[sendRoomCredentialsEmail] Error sending to ${leaderEmail}:`, err));
+          }
+        }
+      } catch (e) {
+        console.warn("[updateRoundCredentials] Notification & Email dispatch error:", e);
+      }
+
+      // Memory store fallback email dispatch
+      try {
+        const memRegs = memoryRegistrations.filter(
+          (r) => r.tournamentId === resolvedTournamentId || r.tournamentId === id
+        );
+        for (const mr of memRegs) {
+          const mEmail = mr.captainEmail || (mr as any).leaderEmail;
+          if (mEmail) {
+            sendRoomCredentialsEmail({
+              leaderEmail: mEmail,
+              leaderName: mr.captainName || mr.captainIgn || "Team Leader",
+              teamName: mr.teamName || "Your Squad",
+              tournamentTitle: (tournament as any)?.title || "Free Fire Tournament",
+              roundName: round.name || "ROUND 1",
+              roomId: cleanRoomId,
+              roomPassword: cleanRoomPassword,
+              map: updatedMeta.map || "BERMUDA",
+              roomTime: updatedMeta.roomTime || "",
+              slotNumber: mr.slotNumber || 1,
+              customNotes: updatedMeta.customNotes || "",
+            }).catch(() => {});
+          }
         }
       } catch (e) {}
     }
@@ -4451,8 +4518,14 @@ export const getMyRoomAccess = async (req: AuthenticatedRequest, res: Response, 
       return;
     }
 
-    // Sort by roundNumber descending to inspect latest round; prioritize active/non-eliminated if same round
+    // Prioritize round with published credentials if available
     teamRoundEntries.sort((a, b) => {
+      const aParsed = parseRoundWithCredentials(a.round);
+      const bParsed = parseRoundWithCredentials(b.round);
+      const aHasCreds = Boolean(aParsed.roomId && (aParsed.credentialsPublished || aParsed.roomId));
+      const bHasCreds = Boolean(bParsed.roomId && (bParsed.credentialsPublished || bParsed.roomId));
+      if (aHasCreds && !bHasCreds) return -1;
+      if (!aHasCreds && bHasCreds) return 1;
       if (b.round.roundNumber !== a.round.roundNumber) {
         return b.round.roundNumber - a.round.roundNumber;
       }
