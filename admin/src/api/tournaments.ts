@@ -46,6 +46,8 @@ export const tournamentsApi = {
     if (params?.gameCategory && params.gameCategory !== "ALL") query.set("gameCategory", params.gameCategory);
     if (params?.status && params.status !== "ALL") query.set("status", params.status);
     if (params?.search) query.set("search", params.search);
+    query.set("includeDrafts", "true");
+    query.set("_t", Date.now().toString());
 
     const qs = query.toString() ? `?${query.toString()}` : "";
     return apiRequest<Tournament[]>(`/tournaments${qs}`, { method: "GET" }, []);

@@ -604,7 +604,9 @@ export const AdminTournamentsPage: React.FC = () => {
         localStorage.removeItem("lordz_admin_tournament_draft");
       }
 
+      clearClientCache("tournaments");
       setModalOpen(false);
+      loadTournaments();
     } catch (err: any) {
       alert(err.message || "Failed to save tournament");
     }

@@ -34,8 +34,8 @@ const tournamentSchema = z.object({
   allowUnallocatedPrize: z.boolean().optional().default(true),
   entryFee: z.string().default("FREE ENTRY"),
   feeAmount: z.number().default(0),
-  entryFeeType: z.enum(["PER_TEAM", "PER_PLAYER"]).optional().default("PER_TEAM"),
-  paymentMethod: z.enum(["ONLINE", "UPI", "BOTH"]).optional().default("BOTH"),
+  entryFeeType: z.string().optional().default("PER_TEAM"),
+  paymentMethod: z.string().optional().default("BOTH"),
   currency: z.string().default("INR"),
   slots: z.string().default("32 TEAMS"),
   totalTeams: z.number().default(32),
@@ -477,11 +477,15 @@ export const getTournaments = async (req: Request, res: Response, next: NextFunc
 
     if (dbConnected) {
       try {
-        const where: any = {
-          // Always exclude DRAFT/unpublished tournaments from public listing
-          isDraft: false,
-          isPublished: true,
-        };
+        const where: any = {};
+        const authHeader = req.headers.authorization;
+        const isRequestFromAdmin = Boolean(authHeader && authHeader.startsWith("Bearer ")) || req.query.includeDrafts === "true";
+
+        if (!isRequestFromAdmin && status !== "DRAFT") {
+          where.isDraft = false;
+          where.isPublished = true;
+        }
+
         if (status && status !== "ALL") {
           const s = String(status).toUpperCase();
           if (s === "UPCOMING") {
@@ -490,12 +494,10 @@ export const getTournaments = async (req: Request, res: Response, next: NextFunc
             where.status = { in: ["LIVE", "ONGOING"] };
           } else if (s === "COMPLETED") {
             where.status = { in: ["COMPLETED", "ARCHIVED"] };
-          } else if (s !== "DRAFT") {
-            // Never expose DRAFT via public API even if explicitly requested
+          } else {
             where.status = s;
           }
-        } else {
-          // Default: exclude DRAFT status
+        } else if (!isRequestFromAdmin) {
           where.status = { not: "DRAFT" };
         }
         if (gameCategory && gameCategory !== "ALL") where.gameCategory = String(gameCategory);
@@ -788,7 +790,10 @@ export const createTournament = async (req: AuthenticatedRequest, res: Response,
       prizePool: cleanPrize,
     });
 
-    const generatedSlug = data.slug || data.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    let generatedSlug = data.slug || data.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    if (!generatedSlug) {
+      generatedSlug = "tourney-" + Date.now();
+    }
 
     const newTournamentId = "tourney-" + Date.now();
     const createdTournament = {
@@ -802,7 +807,19 @@ export const createTournament = async (req: AuthenticatedRequest, res: Response,
 
     if (dbConnected) {
       try {
-        const createPayload = { ...data, slug: generatedSlug };
+        const existingSlug = await prisma.tournament.findUnique({ where: { slug: generatedSlug } });
+        if (existingSlug) {
+          generatedSlug = `${generatedSlug}-${Date.now().toString(36)}`;
+        }
+
+        const createPayload: any = { ...data, slug: generatedSlug };
+        if (rawData.id) {
+          const existingId = await prisma.tournament.findUnique({ where: { id: rawData.id } });
+          if (!existingId) {
+            createPayload.id = rawData.id;
+          }
+        }
+
         const dbResult = await prisma.tournament.create({
           data: {
             ...createPayload,
@@ -840,7 +857,8 @@ export const createTournament = async (req: AuthenticatedRequest, res: Response,
         res.status(201).json({ success: true, message: "Tournament created successfully", data: dbResult });
         return;
       } catch (err) {
-        console.warn("Prisma create failed, falling back to memory store:", err);
+        console.error("Prisma tournament create error:", err);
+        throw err;
       }
     }
 
