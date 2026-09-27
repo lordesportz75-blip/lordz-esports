@@ -184,17 +184,21 @@ export const MyTournamentsPage: React.FC = () => {
     await Promise.all(
       tournamentsList.map(async (item) => {
         const tId = item.tournament?.id || item.tournamentId;
-        if (tId) {
+        const slug = item.tournament?.slug;
+        const targetId = tId || slug;
+        if (targetId) {
           try {
-            const res = await getMyRoomAccess(tId);
+            const res = await getMyRoomAccess(targetId);
             if (res?.success && res.data) {
-              map[tId] = res.data;
+              if (tId) map[tId] = res.data;
+              if (slug) map[slug] = res.data;
+              if (item.tournament?.id) map[item.tournament.id] = res.data;
             }
           } catch (e) {}
         }
       })
     );
-    setRoomAccessByTournament(map);
+    setRoomAccessByTournament((prev) => ({ ...prev, ...map }));
   };
 
   const handleLoadMatches = async (tournamentId: string) => {
@@ -202,7 +206,11 @@ export const MyTournamentsPage: React.FC = () => {
     try {
       const roomRes = await getMyRoomAccess(tournamentId);
       if (roomRes?.success && roomRes.data) {
-        setRoomAccessByTournament((prev) => ({ ...prev, [tournamentId]: roomRes.data }));
+        setRoomAccessByTournament((prev) => ({
+          ...prev,
+          [tournamentId]: roomRes.data,
+          ...(roomRes.data.tournamentId ? { [roomRes.data.tournamentId]: roomRes.data } : {}),
+        }));
       }
     } catch (err) {
       console.error("Failed to load match credentials:", err);
@@ -402,14 +410,29 @@ export const MyTournamentsPage: React.FC = () => {
             const paymentStatus =
               reg?.paymentStatus || item.paymentStatus || reg?.payment?.status || item.payment?.status;
 
-            const isConfirmed = regStatus === "CONFIRMED";
+            const isConfirmed =
+              regStatus === "CONFIRMED" ||
+              regStatus === "APPROVED" ||
+              item.status === "CONFIRMED" ||
+              item.status === "APPROVED" ||
+              paymentStatus === "VERIFIED" ||
+              paymentStatus === "PAID" ||
+              paymentStatus === "COMPLETED" ||
+              Boolean(item.isFeePaidByLeader);
+
             const isPaymentUnderReview =
-              regStatus === "PAYMENT_UNDER_REVIEW" || paymentStatus === "UNDER_REVIEW";
+              !isConfirmed &&
+              (regStatus === "PAYMENT_UNDER_REVIEW" ||
+                paymentStatus === "UNDER_REVIEW" ||
+                paymentStatus === "PENDING_VERIFICATION");
+
             const isRejected =
-              regStatus === "PAYMENT_FAILED" ||
-              paymentStatus === "REJECTED" ||
-              reg?.payment?.status === "REJECTED" ||
-              item.payment?.status === "REJECTED";
+              !isConfirmed &&
+              (regStatus === "PAYMENT_FAILED" ||
+                paymentStatus === "REJECTED" ||
+                reg?.payment?.status === "REJECTED" ||
+                item.payment?.status === "REJECTED");
+
             const isWaitlisted =
               Boolean(reg?.isWaitlisted) ||
               regStatus === "WAITLISTED" ||
@@ -806,7 +829,9 @@ export const MyTournamentsPage: React.FC = () => {
 
                         {/* Room Credentials & Match Contender Module */}
                         {(() => {
-                          const roomAccess = roomAccessByTournament[tournament.id];
+                          const roomAccess =
+                            roomAccessByTournament[tournament.id] ||
+                            (tournament.slug ? roomAccessByTournament[tournament.slug] : null);
                           if (!roomAccess) {
                             return (
                               <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 space-y-3">

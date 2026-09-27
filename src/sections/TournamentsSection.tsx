@@ -182,9 +182,17 @@ export const TournamentsSection = ({
                 const isLive = t.status === "LIVE";
                 const userReg = userRegistrationMap.get(t.id) || (t.slug ? userRegistrationMap.get(t.slug) : undefined);
                 const isUserRegistered = Boolean(userReg);
-                const isConfirmed = userReg?.status === "CONFIRMED";
+                const isConfirmed =
+                  userReg?.status === "CONFIRMED" ||
+                  userReg?.status === "APPROVED" ||
+                  userReg?.paymentStatus === "VERIFIED" ||
+                  userReg?.paymentStatus === "PAID" ||
+                  userReg?.paymentStatus === "COMPLETED";
                 const isUnderReview =
-                  userReg?.status === "PAYMENT_UNDER_REVIEW" || userReg?.paymentStatus === "UNDER_REVIEW";
+                  !isConfirmed &&
+                  (userReg?.status === "PAYMENT_UNDER_REVIEW" ||
+                    userReg?.paymentStatus === "UNDER_REVIEW" ||
+                    userReg?.paymentStatus === "PENDING_VERIFICATION");
                 const isPendingInvitation = Boolean(userReg?.isInvitationPending);
 
                 return (

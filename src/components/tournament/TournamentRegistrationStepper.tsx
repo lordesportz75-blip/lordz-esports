@@ -290,7 +290,7 @@ export const TournamentRegistrationStepper: React.FC<RegistrationStepperProps> =
       const res = await tournamentsApi.registerSquad(tournament.id, payload);
       const regData = res.data || res;
 
-      if (regData?.status === "CONFIRMED") {
+      if (regData?.status === "CONFIRMED" || regData?.status === "APPROVED") {
         confetti({
           particleCount: 100,
           spread: 70,
@@ -1059,7 +1059,7 @@ export const TournamentRegistrationStepper: React.FC<RegistrationStepperProps> =
                   </p>
                 </div>
               </div>
-            ) : registrationResult?.status === "CONFIRMED" ? (
+            ) : (registrationResult?.status === "CONFIRMED" || registrationResult?.status === "APPROVED") ? (
               <div className="space-y-4">
                 <div className="w-16 h-16 rounded-full bg-[#22C55E]/20 border-2 border-[#22C55E] flex items-center justify-center text-[#22C55E] mx-auto shadow-[0_0_30px_rgba(34,197,94,0.4)] animate-bounce">
                   <CheckCircle2 className="h-8 w-8" />
@@ -1119,7 +1119,7 @@ export const TournamentRegistrationStepper: React.FC<RegistrationStepperProps> =
                 <span className="text-gray-400">Status:</span>
                 <span
                   className={`font-bold uppercase ${
-                    registrationResult?.status === "CONFIRMED" ? "text-[#22C55E]" : "text-[#FFBE32]"
+                    (registrationResult?.status === "CONFIRMED" || registrationResult?.status === "APPROVED") ? "text-[#22C55E]" : "text-[#FFBE32]"
                   }`}
                 >
                   {registrationResult?.status || "CONFIRMED"}

@@ -3527,10 +3527,21 @@ export const getEligibleTeamsForRound = async (req: Request, res: Response, next
   try {
     const { id, roundId } = req.params;
 
+    let tournament: any = null;
+    try {
+      tournament = await prisma.tournament.findFirst({
+        where: { OR: [{ id }, { slug: id }] },
+      });
+    } catch (e) {}
+    if (!tournament) {
+      tournament = memoryTournaments.find((t) => t.id === id || t.slug === id);
+    }
+    const resolvedTournamentId = tournament?.id || id;
+
     let rounds: any[] = [];
     try {
       rounds = await (prisma as any).tournamentRound.findMany({
-        where: { tournamentId: id },
+        where: { tournamentId: resolvedTournamentId },
         include: {
           roundTeams: {
             include: { team: true },
@@ -3541,11 +3552,23 @@ export const getEligibleTeamsForRound = async (req: Request, res: Response, next
     } catch (e) {}
 
     if (!rounds || rounds.length === 0) {
-      rounds = memoryRounds.filter((r) => r.tournamentId === id).sort((a, b) => a.roundNumber - b.roundNumber);
+      rounds = memoryRounds
+        .filter((r) => r.tournamentId === resolvedTournamentId || r.tournamentId === id)
+        .sort((a, b) => a.roundNumber - b.roundNumber);
     }
 
-    const currentRoundIndex = rounds.findIndex((r) => r.id === roundId);
-    const currentRound = rounds[currentRoundIndex] || memoryRounds.find((r) => r.id === roundId);
+    const currentRoundIndex = rounds.findIndex(
+      (r) => r.id === roundId || r.name === roundId || String(r.roundNumber) === String(roundId)
+    );
+    const currentRound =
+      rounds[currentRoundIndex] ||
+      memoryRounds.find(
+        (r) =>
+          r.id === roundId ||
+          ((r.tournamentId === resolvedTournamentId || r.tournamentId === id) &&
+            (r.name === roundId || String(r.roundNumber) === String(roundId)))
+      ) ||
+      rounds[0];
 
     if (!currentRound) {
       res.status(404).json({ success: false, message: "Round not found" });
@@ -3988,6 +4011,17 @@ export const updateRoundCredentials = async (req: AuthenticatedRequest, res: Res
     const { id, roundId } = req.params;
     const { roomId, roomPassword, map, roomTime, credentialsPublished, customNotes } = req.body;
 
+    let tournament: any = null;
+    try {
+      tournament = await prisma.tournament.findFirst({
+        where: { OR: [{ id }, { slug: id }] },
+      });
+    } catch (e) {}
+    if (!tournament) {
+      tournament = memoryTournaments.find((t) => t.id === id || t.slug === id);
+    }
+    const resolvedTournamentId = tournament?.id || id;
+
     let round: any = null;
 
     // 1. Try finding by roundId in Prisma
@@ -4001,7 +4035,7 @@ export const updateRoundCredentials = async (req: AuthenticatedRequest, res: Res
         const numVal = Number(roundId);
         round = await (prisma as any).tournamentRound.findFirst({
           where: {
-            tournamentId: id,
+            tournamentId: resolvedTournamentId,
             OR: [
               { id: roundId },
               { name: roundId },
@@ -4017,7 +4051,8 @@ export const updateRoundCredentials = async (req: AuthenticatedRequest, res: Res
       round = memoryRounds.find(
         (r) =>
           r.id === roundId ||
-          (r.tournamentId === id && (r.name === roundId || String(r.roundNumber) === String(roundId)))
+          ((r.tournamentId === resolvedTournamentId || r.tournamentId === id) &&
+            (r.name === roundId || String(r.roundNumber) === String(roundId)))
       );
     }
 
@@ -4025,7 +4060,7 @@ export const updateRoundCredentials = async (req: AuthenticatedRequest, res: Res
     if (!round) {
       try {
         round = await (prisma as any).tournamentRound.findFirst({
-          where: { tournamentId: id },
+          where: { tournamentId: resolvedTournamentId },
           orderBy: { roundNumber: "asc" },
         });
       } catch (e) {}
@@ -4033,7 +4068,7 @@ export const updateRoundCredentials = async (req: AuthenticatedRequest, res: Res
 
     // 5. Try finding first round of this tournament in memory
     if (!round) {
-      round = memoryRounds.find((r) => r.tournamentId === id);
+      round = memoryRounds.find((r) => r.tournamentId === resolvedTournamentId || r.tournamentId === id);
     }
 
     // 6. If tournament exists but has no round yet, create default round to never fail with 404
@@ -4041,7 +4076,7 @@ export const updateRoundCredentials = async (req: AuthenticatedRequest, res: Res
       try {
         round = await (prisma as any).tournamentRound.create({
           data: {
-            tournamentId: id,
+            tournamentId: resolvedTournamentId,
             name: "ROUND 1",
             roundNumber: 1,
             roundType: "BATTLE_ROYALE",
@@ -4055,8 +4090,8 @@ export const updateRoundCredentials = async (req: AuthenticatedRequest, res: Res
 
       if (!round) {
         round = {
-          id: roundId && roundId !== "undefined" && roundId !== "default" ? roundId : `round-${id}-1`,
-          tournamentId: id,
+          id: roundId && roundId !== "undefined" && roundId !== "default" ? roundId : `round-${resolvedTournamentId}-1`,
+          tournamentId: resolvedTournamentId,
           name: "ROUND 1",
           roundNumber: 1,
           roundType: "BATTLE_ROYALE",
@@ -4133,7 +4168,7 @@ export const updateRoundCredentials = async (req: AuthenticatedRequest, res: Res
       const memObj = {
         ...round,
         id: targetId,
-        tournamentId: id,
+        tournamentId: resolvedTournamentId,
         description: JSON.stringify(updatedMeta),
         startTime: updatedMeta.roomTime || round.startTime,
         updatedAt: new Date(),
@@ -4146,7 +4181,7 @@ export const updateRoundCredentials = async (req: AuthenticatedRequest, res: Res
     if (isPublished && cleanRoomId) {
       try {
         const regs = await prisma.tournamentRegistration.findMany({
-          where: { tournamentId: id },
+          where: { tournamentId: resolvedTournamentId },
           select: { submittedById: true },
         });
         const userIds = Array.from(new Set(regs.map((r) => r.submittedById).filter(Boolean)));
@@ -4157,7 +4192,7 @@ export const updateRoundCredentials = async (req: AuthenticatedRequest, res: Res
               type: "ANNOUNCEMENT",
               title: "Room Credentials Published! 🎮",
               message: `Custom room credentials for ${round.name} are live. Room ID: ${cleanRoomId}, Pass: ${cleanRoomPassword}. Check your dashboard.`,
-              metadata: JSON.stringify({ tournamentId: id, roundId: targetId, roomId: cleanRoomId }),
+              metadata: JSON.stringify({ tournamentId: resolvedTournamentId, roundId: targetId, roomId: cleanRoomId }),
             },
           }).catch(() => {});
         }
@@ -4188,12 +4223,24 @@ export const getMyRoomAccess = async (req: AuthenticatedRequest, res: Response, 
       return;
     }
 
+    // Resolve tournament ID in case slug was passed
+    let tournament: any = null;
+    try {
+      tournament = await prisma.tournament.findFirst({
+        where: { OR: [{ id }, { slug: id }] },
+      });
+    } catch (e) {}
+    if (!tournament) {
+      tournament = memoryTournaments.find((t) => t.id === id || t.slug === id);
+    }
+    const resolvedTournamentId = tournament?.id || id;
+
     // 1. Find user's squad registration in this tournament
     let userRegs: any[] = [];
     try {
       userRegs = await prisma.tournamentRegistration.findMany({
         where: {
-          tournamentId: id,
+          tournamentId: resolvedTournamentId,
           OR: [
             { submittedById: userId },
             ...(userEmail ? [{ captainEmail: userEmail }] : []),
@@ -4209,10 +4256,37 @@ export const getMyRoomAccess = async (req: AuthenticatedRequest, res: Response, 
       });
     } catch (e) {}
 
+    // Fallback: check teams where user is leader or member
+    if (!userRegs || userRegs.length === 0) {
+      try {
+        const userTeams = await prisma.team.findMany({
+          where: {
+            tournamentId: resolvedTournamentId,
+            OR: [
+              { leaderId: userId },
+              { members: { some: { userId } } },
+            ],
+          },
+          include: {
+            registration: true,
+            members: true,
+          },
+        });
+        for (const ut of userTeams) {
+          if (ut.registration) {
+            userRegs.push({
+              ...ut.registration,
+              team: ut,
+            });
+          }
+        }
+      } catch (e) {}
+    }
+
     if (!userRegs || userRegs.length === 0) {
       userRegs = memoryRegistrations.filter(
         (r) =>
-          r.tournamentId === id &&
+          (r.tournamentId === resolvedTournamentId || r.tournamentId === id) &&
           (r.submittedById === userId ||
             r.leaderId === userId ||
             (userEmail && r.captainEmail === userEmail) ||
@@ -4240,7 +4314,7 @@ export const getMyRoomAccess = async (req: AuthenticatedRequest, res: Response, 
     let rounds: any[] = [];
     try {
       rounds = await (prisma as any).tournamentRound.findMany({
-        where: { tournamentId: id },
+        where: { tournamentId: resolvedTournamentId },
         include: {
           roundTeams: {
             include: { team: true },
@@ -4251,7 +4325,9 @@ export const getMyRoomAccess = async (req: AuthenticatedRequest, res: Response, 
     } catch (e) {}
 
     if (!rounds || rounds.length === 0) {
-      rounds = memoryRounds.filter((r) => r.tournamentId === id).sort((a, b) => a.roundNumber - b.roundNumber);
+      rounds = memoryRounds
+        .filter((r) => r.tournamentId === resolvedTournamentId || r.tournamentId === id)
+        .sort((a, b) => a.roundNumber - b.roundNumber);
     }
 
     // 3. Check all roundTeam entries for this squad
@@ -4273,7 +4349,11 @@ export const getMyRoomAccess = async (req: AuthenticatedRequest, res: Response, 
     // If squad is registered in tournament but not explicitly linked in roundTeams:
     if (teamRoundEntries.length === 0) {
       if (rounds && rounds.length > 0) {
-        const activeRound = rounds[0];
+        const activeRound =
+          rounds.find((r) => {
+            const p = parseRoundWithCredentials(r);
+            return Boolean(p.roomId);
+          }) || rounds[0];
         const parsed = parseRoundWithCredentials(activeRound);
         const hasRoomId = Boolean(parsed.roomId);
         const isPub = Boolean(parsed.credentialsPublished || hasRoomId);
@@ -4282,7 +4362,7 @@ export const getMyRoomAccess = async (req: AuthenticatedRequest, res: Response, 
         if (!reg.slotNumber) {
           try {
             const allRegs = await prisma.tournamentRegistration.findMany({
-              where: { tournamentId: id },
+              where: { tournamentId: resolvedTournamentId },
               orderBy: { createdAt: "asc" },
             });
             const idx = allRegs.findIndex((r: any) => r.id === reg.id || (r.teamId && r.teamId === teamId));

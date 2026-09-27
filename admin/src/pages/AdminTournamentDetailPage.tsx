@@ -654,9 +654,10 @@ export const AdminTournamentDetailPage: React.FC = () => {
     setRoomForm(payload);
     setSavingRoomCredentials(true);
     try {
-      const res = await tournamentsApi.updateRoundCredentials(tournamentId, roundIdToUse || "default", payload);
+      const targetTournamentId = tournament?.id || tournamentId;
+      const res = await tournamentsApi.updateRoundCredentials(targetTournamentId, roundIdToUse || "default", payload);
       if (res?.success) {
-        const updatedRounds = await tournamentsApi.getRounds(tournamentId);
+        const updatedRounds = await tournamentsApi.getRounds(targetTournamentId);
         if (updatedRounds && updatedRounds.length > 0) {
           setRounds(updatedRounds);
           if (!activeRoundId) setActiveRoundId(roundIdToUse || updatedRounds[0].id);
@@ -679,7 +680,7 @@ export const AdminTournamentDetailPage: React.FC = () => {
     setEligibleModalOpen(true);
     setEligibleTabFilter("ALL");
     try {
-      const res = await tournamentsApi.getEligibleTeamsForRound(tournamentId, roundId);
+      const res = await tournamentsApi.getEligibleTeamsForRound(tournament?.id || tournamentId, roundId);
       if (res && res.data && res.data.length > 0) {
         setEligibleTeams(res.data);
         const alreadySelected = res.data.filter((t: any) => t.alreadySelected).map((t: any) => t.teamId || t.id);

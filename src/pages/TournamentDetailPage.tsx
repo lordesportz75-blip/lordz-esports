@@ -194,8 +194,19 @@ export const TournamentDetailPage: React.FC = () => {
   const isUserRegistered = Boolean(userRegistration);
   const regStatus = userRegistration?.registration?.status || userRegistration?.status;
   const paymentStatus = userRegistration?.registration?.paymentStatus || userRegistration?.paymentStatus;
-  const isConfirmed = regStatus === "CONFIRMED";
-  const isPaymentUnderReview = regStatus === "PAYMENT_UNDER_REVIEW" || paymentStatus === "UNDER_REVIEW";
+  const isConfirmed =
+    regStatus === "CONFIRMED" ||
+    regStatus === "APPROVED" ||
+    userRegistration?.status === "CONFIRMED" ||
+    userRegistration?.status === "APPROVED" ||
+    paymentStatus === "VERIFIED" ||
+    paymentStatus === "PAID" ||
+    paymentStatus === "COMPLETED";
+  const isPaymentUnderReview =
+    !isConfirmed &&
+    (regStatus === "PAYMENT_UNDER_REVIEW" ||
+      paymentStatus === "UNDER_REVIEW" ||
+      paymentStatus === "PENDING_VERIFICATION");
   const isPendingInvitation = Boolean(userRegistration?.isInvitationPending);
 
   const isCheckInOpen = useMemo(() => {
