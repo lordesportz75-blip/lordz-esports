@@ -43,13 +43,14 @@ export const tournamentsApi = {
     if (params?.gameCategory && params.gameCategory !== "ALL") query.set("gameCategory", params.gameCategory);
     if (params?.status && params.status !== "ALL") query.set("status", params.status);
     if (params?.search) query.set("search", params.search);
+    query.set("_t", Date.now().toString());
 
     const qs = query.toString() ? `?${query.toString()}` : "";
     return apiRequest<Tournament[]>(`/tournaments${qs}`, { method: "GET" }, []);
   },
 
   getById: async (id: string): Promise<Tournament | null> => {
-    return apiRequest<Tournament | null>(`/tournaments/${id}`, { method: "GET" }, null);
+    return apiRequest<Tournament | null>(`/tournaments/${id}?_t=${Date.now()}`, { method: "GET" }, null);
   },
 
   registerSquad: async (tournamentId: string, squad: SquadRegistrationInput): Promise<any> => {

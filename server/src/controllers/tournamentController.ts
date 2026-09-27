@@ -469,6 +469,10 @@ function recalculateLeaderboardRanks(tournamentId: string) {
  */
 export const getTournaments = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+
     const { status, gameCategory, featured, search } = req.query;
 
     if (dbConnected) {
@@ -624,6 +628,10 @@ export const getTournaments = async (req: Request, res: Response, next: NextFunc
  */
 export const getTournamentById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+
     const { id } = req.params;
 
     if (dbConnected) {

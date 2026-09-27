@@ -118,8 +118,8 @@ export async function apiRequest<T = any>(
 
   const url = getApiUrl(endpoint);
   const isTournamentsEndpoint = url.includes("/tournaments");
-  const isCacheableGet = method === "GET" && !token;
-  const effectiveTtl = isTournamentsEndpoint ? 10 * 1000 : CLIENT_CACHE_TTL; // 10s for tournaments, 3m for other static endpoints
+  const isCacheableGet = method === "GET" && !token && !isTournamentsEndpoint;
+  const effectiveTtl = CLIENT_CACHE_TTL;
 
   // 1. Check in-memory cache first (0ms)
   if (isCacheableGet) {

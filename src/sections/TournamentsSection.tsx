@@ -28,18 +28,39 @@ export const TournamentsSection = ({
   const [selectedStatus, setSelectedStatus] = useState<StatusFilter>("ALL");
 
   useEffect(() => {
+    let isMounted = true;
     setLoading(true);
+
+    // Force purge any old cached tournament data
+    try {
+      if (typeof localStorage !== "undefined") {
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const k = localStorage.key(i);
+          if (k && k.includes("tournaments")) {
+            localStorage.removeItem(k);
+          }
+        }
+      }
+    } catch {}
+
     tournamentsApi
       .getAll()
       .then((data) => {
-        setTournaments(Array.isArray(data) ? data : []);
+        if (isMounted) {
+          setTournaments(Array.isArray(data) ? data : []);
+        }
       })
-      .catch(() => {
-        setTournaments([]);
+      .catch((err) => {
+        console.error("Failed to load tournaments:", err);
+        if (isMounted) setTournaments([]);
       })
       .finally(() => {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {

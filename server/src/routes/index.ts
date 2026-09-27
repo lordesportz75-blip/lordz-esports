@@ -64,7 +64,7 @@ router.post(
 );
 
 // ================= TOURNAMENT ROUTES =================
-router.get("/tournaments", cacheMiddleware(15), tournamentCtrl.getTournaments);
+router.get("/tournaments", tournamentCtrl.getTournaments);
 router.get(
   "/tournaments/admin/analytics",
   authenticate,
