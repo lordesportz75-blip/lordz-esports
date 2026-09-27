@@ -10,6 +10,7 @@ import {
   fallbackPlansAdmin
 } from "../api/partners";
 import { adminApi } from "../api/admin";
+import { resolveAdminPartnerLogo, resolveAdminPartnerCard } from "../utils/partnerLogo";
 import {
   Handshake,
   Plus,
@@ -724,24 +725,53 @@ export const AdminPartnersPage: React.FC = () => {
 
                     {/* Logo Display Box */}
                     <div className="mt-4 w-full h-32 rounded-xl bg-black/60 border border-white/5 flex items-center justify-center p-4 relative overflow-hidden group-hover:border-[#FFBE32]/30 transition-colors group/logo">
-                      {p.logoImage ? (
-                        <img
-                          src={p.logoImage}
-                          alt={p.name}
-                          className="max-h-20 max-w-[85%] object-contain filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)] group-hover:scale-105 transition-transform duration-300"
-                        />
-                      ) : p.cardImage ? (
-                        <img
-                          src={p.cardImage}
-                          alt={p.name}
-                          className="w-full h-full object-cover rounded-lg group-hover:scale-105 transition-transform duration-300"
-                        />
-                      ) : (
-                        <div className="flex flex-col items-center justify-center text-gray-500">
-                          <ImageIcon className="h-8 w-8 text-gray-600 mb-1" />
-                          <span className="text-[10px] font-mono uppercase">No Logo Uploaded</span>
-                        </div>
-                      )}
+                      {(() => {
+                        const resolvedLogo = resolveAdminPartnerLogo(p.logoImage, p.name, p.id);
+                        const resolvedCard = resolveAdminPartnerCard(p.cardImage, p.id);
+                        if (resolvedLogo) {
+                          return (
+                            <img
+                              src={resolvedLogo}
+                              alt={p.name}
+                              loading="lazy"
+                              decoding="async"
+                              className="max-h-20 max-w-[85%] object-contain filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)] group-hover:scale-105 transition-transform duration-300"
+                              onError={(e) => {
+                                const target = e.currentTarget as HTMLImageElement;
+                                const fallback = resolveAdminPartnerLogo(null, p.name, p.id);
+                                if (fallback && target.src !== fallback) {
+                                  target.src = fallback;
+                                }
+                              }}
+                            />
+                          );
+                        } else if (resolvedCard) {
+                          return (
+                            <img
+                              src={resolvedCard}
+                              alt={p.name}
+                              loading="lazy"
+                              decoding="async"
+                              className="w-full h-full object-cover rounded-lg group-hover:scale-105 transition-transform duration-300"
+                              onError={(e) => {
+                                const target = e.currentTarget as HTMLImageElement;
+                                const fallback = resolveAdminPartnerLogo(null, p.name, p.id);
+                                if (fallback) {
+                                  target.src = fallback;
+                                  target.className = "max-h-20 max-w-[85%] object-contain filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)]";
+                                }
+                              }}
+                            />
+                          );
+                        } else {
+                          return (
+                            <div className="flex flex-col items-center justify-center text-gray-500">
+                              <ImageIcon className="h-8 w-8 text-gray-600 mb-1" />
+                              <span className="text-[10px] font-mono uppercase">No Logo Uploaded</span>
+                            </div>
+                          );
+                        }
+                      })()}
 
                       {/* Quick Upload Hover Overlay */}
                       <label
@@ -1000,9 +1030,13 @@ export const AdminPartnersPage: React.FC = () => {
                   {partnerFormData.logoImage ? (
                     <>
                       <img
-                        src={partnerFormData.logoImage}
+                        src={resolveAdminPartnerLogo(partnerFormData.logoImage, partnerFormData.name)}
                         alt="Logo preview"
                         className="max-h-20 max-w-[80%] object-contain filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.9)]"
+                        onError={(e) => {
+                          const fallback = resolveAdminPartnerLogo(null, partnerFormData.name);
+                          if (fallback) (e.currentTarget as HTMLImageElement).src = fallback;
+                        }}
                       />
                       <div className="absolute top-2 right-2 flex items-center gap-1.5">
                         <button

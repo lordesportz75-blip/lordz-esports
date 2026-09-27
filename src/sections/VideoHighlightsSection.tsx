@@ -6,6 +6,23 @@ import { VideoCard } from "../components/common/VideoCard";
 import { getFeaturedHighlights, type MediaItem } from "../data/media";
 import { mediaApi } from "../api/media";
 
+const CACHE_KEY = "lordz_cached_video_highlights";
+
+const getInitialHighlights = (): MediaItem[] => {
+  if (typeof window !== "undefined") {
+    try {
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch {}
+  }
+  return getFeaturedHighlights();
+};
+
 interface VideoHighlightsSectionProps {
   onPlayVideo: (item: MediaItem) => void;
 }
@@ -13,36 +30,41 @@ interface VideoHighlightsSectionProps {
 export const VideoHighlightsSection = ({
   onPlayVideo,
 }: VideoHighlightsSectionProps) => {
-  const [highlights, setHighlights] = useState<MediaItem[]>(getFeaturedHighlights());
+  const [highlights, setHighlights] = useState<MediaItem[]>(getInitialHighlights);
 
   useEffect(() => {
-    const fetchHighlights = () => {
-      mediaApi
-        .getAll()
-        .then((data) => {
-          if (data && data.length > 0) {
-            // Strictly display videos chosen by admin
-            const chosen = data.filter((m) => m.featured);
-            setHighlights(chosen.length > 0 ? chosen : data.slice(0, 3));
-          }
-        })
-        .catch(() => {
-          setHighlights(getFeaturedHighlights());
-        });
+    let isMounted = true;
+
+    const fetchHighlights = async () => {
+      try {
+        const data = await mediaApi.getAll();
+        if (!isMounted) return;
+        if (data && data.length > 0) {
+          // Strictly display videos chosen by admin
+          const chosen = data.filter((m) => m.featured || m.tag === "PREMIERE");
+          const finalVideos = chosen.length > 0 ? chosen.slice(0, 6) : data.slice(0, 3);
+          setHighlights(finalVideos);
+          try {
+            localStorage.setItem(CACHE_KEY, JSON.stringify(finalVideos));
+          } catch {}
+        }
+      } catch {
+        // Fallback already loaded via initial state
+      }
     };
 
     fetchHighlights();
 
     // Re-fetch when switching back to this tab so additions in admin portal reflect immediately
     window.addEventListener("focus", fetchHighlights);
-    // Conservative polling interval, paused when document is hidden
     const interval = setInterval(() => {
       if (!document.hidden) {
         fetchHighlights();
       }
-    }, 45000);
+    }, 30000);
 
     return () => {
+      isMounted = false;
       window.removeEventListener("focus", fetchHighlights);
       clearInterval(interval);
     };
@@ -101,8 +123,16 @@ export const VideoHighlightsSection = ({
           </motion.div>
         </div>
 
-        {/* 3-Card Grid on Desktop, 2 on Tablet, 1 on Mobile */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Responsive Grid - Adapts gracefully based on video count */}
+        <div
+          className={`grid gap-6 ${
+            highlights.length === 1
+              ? "grid-cols-1 max-w-xl mx-auto"
+              : highlights.length === 2
+              ? "grid-cols-1 md:grid-cols-2 max-w-4xl mx-auto"
+              : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+          }`}
+        >
           {highlights.map((item, index) => (
             <motion.div
               key={item.id}

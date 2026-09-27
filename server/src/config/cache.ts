@@ -170,7 +170,7 @@ export function cacheMiddleware(ttlSeconds: number = 180) {
         res.setHeader("X-Cache", "HIT");
         res.setHeader(
           "Cache-Control",
-          `public, max-age=${Math.min(ttlSeconds, 60)}, s-maxage=${ttlSeconds}, stale-while-revalidate=600`
+          `public, max-age=${Math.min(ttlSeconds, 60)}, s-maxage=${ttlSeconds}, stale-while-revalidate=86400`
         );
         return res.json(cached);
       }
@@ -187,7 +187,7 @@ export function cacheMiddleware(ttlSeconds: number = 180) {
         res.setHeader("X-Cache", "MISS");
         res.setHeader(
           "Cache-Control",
-          `public, max-age=${Math.min(ttlSeconds, 60)}, s-maxage=${ttlSeconds}, stale-while-revalidate=600`
+          `public, max-age=${Math.min(ttlSeconds, 60)}, s-maxage=${ttlSeconds}, stale-while-revalidate=86400`
         );
       }
       return originalJson(body);

@@ -17,7 +17,18 @@ export const MediaSection = ({
   onPlayMedia,
   showHeader = true,
 }: MediaSectionProps) => {
-  const [items, setItems] = useState<MediaItem[]>(mediaData);
+  const [items, setItems] = useState<MediaItem[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("lordz_cached_all_media");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {}
+    }
+    return mediaData;
+  });
   const [selectedTab, setSelectedTab] = useState<MediaTab>("ALL");
 
   useEffect(() => {
@@ -27,10 +38,13 @@ export const MediaSection = ({
         .then((data) => {
           if (data && data.length > 0) {
             setItems(data);
+            try {
+              localStorage.setItem("lordz_cached_all_media", JSON.stringify(data));
+            } catch {}
           }
         })
         .catch(() => {
-          setItems(mediaData);
+          // Use current fallback
         });
     };
 

@@ -63,7 +63,7 @@ interface ClientCacheEntry<T> {
   timestamp: number;
 }
 const clientCache = new Map<string, ClientCacheEntry<any>>();
-const CLIENT_CACHE_TTL = 15 * 1000;
+const CLIENT_CACHE_TTL = 2 * 60 * 1000;
 
 export function clearClientCache(pattern?: string) {
   if (!pattern) {
@@ -87,17 +87,21 @@ export async function apiRequest<T = any>(
     localStorage.getItem("token") ||
     (import.meta.env.DEV ? "demo-admin-token" : null);
 
+  const method = (options.method || "GET").toUpperCase();
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
     ...(options.headers as Record<string, string>),
   };
+
+  // Only attach Content-Type on requests with payload (omitting on GET avoids CORS preflight OPTIONS roundtrip)
+  if (method !== "GET" && method !== "HEAD" && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
 
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
 
   const url = getApiUrl(endpoint);
-  const method = (options.method || "GET").toUpperCase();
   const isCacheableGet = method === "GET" && !token;
 
   if (isCacheableGet) {

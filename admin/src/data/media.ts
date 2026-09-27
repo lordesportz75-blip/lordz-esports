@@ -15,17 +15,18 @@ export interface MediaItem {
 
 export const mediaData: MediaItem[] = [
   {
-    id: "media-vid-1",
+    id: "media-sh-1",
     type: "VIDEOS",
-    title: "FLAME OF GLORY S2 • OFFICIAL TRAILER & TEAM REVEAL",
-    duration: "02:45",
-    views: "48K VIEWS",
-    date: "2 DAYS AGO",
+    title: "T1 GRAND FINALS HIGHLIGHTS ( LORD.LUFFY)",
+    duration: "00:30",
+    views: "89K VIEWS",
+    date: "LAST WEEK",
     game: "FREE FIRE MAX",
-    youtubeId: "dQw4w9WgXcQ",
-    tag: "FEATURED",
+    youtubeId: "o-1d_Ez_LcA",
+    thumbnail: "https://img.youtube.com/vi/o-1d_Ez_LcA/hqdefault.jpg",
+    tag: "PREMIERE",
     featured: true,
-    description: "The grand cinematic reveal of Flame of Glory Season 2, featuring all 32 qualified squads.",
+    description: "Official Grand Finals highlights of Lord Esports starring Lord Luffy dominating Bermuda.",
   },
   {
     id: "media-hl-1",
@@ -35,10 +36,25 @@ export const mediaData: MediaItem[] = [
     views: "34K VIEWS",
     date: "YESTERDAY",
     game: "FREE FIRE MAX",
-    youtubeId: "dQw4w9WgXcQ",
+    youtubeId: "sphPuFUveuM",
+    thumbnail: "https://img.youtube.com/vi/sphPuFUveuM/hqdefault.jpg",
     tag: "CLUTCH",
     featured: true,
     description: "Insane 1v4 spray transfer in the final zone by team captain Beast to seal the championship booyah.",
+  },
+  {
+    id: "media-vid-1",
+    type: "VIDEOS",
+    title: "FLAME OF GLORY S2 • OFFICIAL TRAILER & TEAM REVEAL",
+    duration: "02:45",
+    views: "48K VIEWS",
+    date: "2 DAYS AGO",
+    game: "FREE FIRE MAX",
+    youtubeId: "fJ9rUzIMcZQ",
+    thumbnail: "https://img.youtube.com/vi/fJ9rUzIMcZQ/hqdefault.jpg",
+    tag: "FEATURED",
+    featured: true,
+    description: "The grand cinematic reveal of Flame of Glory Season 2, featuring all 32 qualified squads.",
   },
   {
     id: "media-hl-2",
@@ -48,7 +64,8 @@ export const mediaData: MediaItem[] = [
     views: "21K VIEWS",
     date: "3 DAYS AGO",
     game: "FREE FIRE MAX",
-    youtubeId: "dQw4w9WgXcQ",
+    youtubeId: "o-1d_Ez_LcA",
+    thumbnail: "https://img.youtube.com/vi/o-1d_Ez_LcA/hqdefault.jpg",
     tag: "TOP PLAY",
     featured: true,
     description: "Flawless tactical smoke push and coordinated flank eliminating the tournament favorites.",
@@ -61,23 +78,11 @@ export const mediaData: MediaItem[] = [
     views: "52K VIEWS",
     date: "4 DAYS AGO",
     game: "FREE FIRE MAX",
-    youtubeId: "dQw4w9WgXcQ",
-    tag: "AGGRESSION",
-    featured: true,
-    description: "Aggressive entry fragging clinic across Clock Tower and Factory.",
-  },
-  {
-    id: "media-sh-1",
-    type: "SHORTS",
-    title: "HOW BEAST CONTROLS RECOIL AT 200M",
-    duration: "00:30",
-    views: "89K VIEWS",
-    date: "LAST WEEK",
-    game: "FREE FIRE MAX",
     youtubeId: "sphPuFUveuM",
     thumbnail: "https://img.youtube.com/vi/sphPuFUveuM/hqdefault.jpg",
-    tag: "PRO TIP",
-    featured: true,
+    tag: "AGGRESSION",
+    featured: false,
+    description: "Aggressive entry fragging clinic across Clock Tower and Factory.",
   },
   {
     id: "media-ph-1",
@@ -99,14 +104,7 @@ export const mediaData: MediaItem[] = [
   },
 ];
 
-/**
- * Service helper to fetch featured video highlights for the Home page.
- * Designed so it can be swapped for a backend/API call in the future without changing UI components.
- */
 export const getFeaturedHighlights = (): MediaItem[] => {
-  const highlights = mediaData.filter(
-    (item) => item.type === "HIGHLIGHTS" || item.featured
-  );
-  // Return curated 3 videos for desktop presentation
-  return highlights.slice(0, 3);
+  const highlights = mediaData.filter((item) => item.featured || item.tag === "PREMIERE");
+  return highlights.length > 0 ? highlights.slice(0, 3) : mediaData.slice(0, 3);
 };

@@ -10,15 +10,15 @@ export default defineConfig({
     port: 5175,
     proxy: {
       '/api': {
-        target: process.env.VITE_API_TARGET || 'http://localhost:5001',
+        target: process.env.VITE_API_TARGET || 'http://localhost:5000',
         changeOrigin: true,
       },
       '/uploads': {
-        target: process.env.VITE_API_TARGET || 'http://localhost:5001',
+        target: process.env.VITE_API_TARGET || 'http://localhost:5000',
         changeOrigin: true,
       },
       '/players': {
-        target: process.env.VITE_API_TARGET || 'http://localhost:5001',
+        target: process.env.VITE_API_TARGET || 'http://localhost:5000',
         changeOrigin: true,
       },
     },

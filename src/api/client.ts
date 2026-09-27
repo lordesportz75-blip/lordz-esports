@@ -63,7 +63,7 @@ interface ClientCacheEntry<T> {
   timestamp: number;
 }
 const clientCache = new Map<string, ClientCacheEntry<any>>();
-const CLIENT_CACHE_TTL = 15 * 1000;
+const CLIENT_CACHE_TTL = 3 * 60 * 1000; // 3 minutes memory cache
 
 export function clearClientCache(pattern?: string) {
   if (!pattern) {
@@ -87,24 +87,55 @@ export async function apiRequest<T = any>(
     localStorage.getItem("lordz_admin_token") ||
     localStorage.getItem("token");
 
+  const method = (options.method || "GET").toUpperCase();
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
     ...(options.headers as Record<string, string>),
   };
+
+  // Only attach Content-Type on requests with payload (omitting on GET avoids CORS preflight OPTIONS roundtrip)
+  if (method !== "GET" && method !== "HEAD" && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
 
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
 
   const url = getApiUrl(endpoint);
-  const method = (options.method || "GET").toUpperCase();
   const isCacheableGet = method === "GET" && !token;
 
+  // 1. Check in-memory cache first (0ms)
   if (isCacheableGet) {
     const cached = clientCache.get(url);
     if (cached && Date.now() - cached.timestamp < CLIENT_CACHE_TTL) {
       return cached.data as T;
     }
+
+    // 2. Check localStorage cache for instant first paint
+    try {
+      const local = localStorage.getItem(`lordz_swr_${url}`);
+      if (local) {
+        const parsed = JSON.parse(local);
+        if (parsed && Date.now() - parsed.timestamp < 10 * 60 * 1000) {
+          // Keep in memory and return
+          clientCache.set(url, { data: parsed.data, timestamp: parsed.timestamp });
+          // Fetch fresh in background if older than 30s
+          if (Date.now() - parsed.timestamp > 30 * 1000) {
+            fetch(url, { ...options, headers })
+              .then(async (r) => {
+                if (r.ok) {
+                  const j = await r.json();
+                  const d = j.data !== undefined ? j.data : j;
+                  clientCache.set(url, { data: d, timestamp: Date.now() });
+                  localStorage.setItem(`lordz_swr_${url}`, JSON.stringify({ data: d, timestamp: Date.now() }));
+                }
+              })
+              .catch(() => {});
+          }
+          return parsed.data as T;
+        }
+      }
+    } catch {}
   } else if (method !== "GET") {
     clientCache.clear();
   }
@@ -132,6 +163,9 @@ export async function apiRequest<T = any>(
 
     if (isCacheableGet) {
       clientCache.set(url, { data: result, timestamp: Date.now() });
+      try {
+        localStorage.setItem(`lordz_swr_${url}`, JSON.stringify({ data: result, timestamp: Date.now() }));
+      } catch {}
     }
 
     return result;

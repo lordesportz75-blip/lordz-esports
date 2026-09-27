@@ -28,6 +28,7 @@ export const VideoCard = ({ item, onPlay }: VideoCardProps) => {
           src={thumbnailSrc}
           alt={item.title}
           loading="lazy"
+          decoding="async"
           className="h-full w-full object-cover object-center filter brightness-90 contrast-105 transition-transform duration-500 group-hover:scale-105"
           onError={(e) => {
             // Fallback if external image fails to load

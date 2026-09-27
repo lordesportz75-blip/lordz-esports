@@ -576,7 +576,7 @@ model MediaItem {
   views       String   @default("10K VIEWS")
   date        String
   game        String   @default("FREE FIRE MAX")
-  youtubeId   String?  @default("dQw4w9WgXcQ")
+  youtubeId   String?  @default("o-1d_Ez_LcA")
   thumbnail   String?
   tag         String   @default("FEATURED")
   description String?
