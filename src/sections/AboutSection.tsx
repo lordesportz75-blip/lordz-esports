@@ -173,14 +173,14 @@ export const AboutSection = ({
         )}
 
         {/* Dynamic Content Based on Tab Selection */}
-        <AnimatePresence mode="wait">
+        <AnimatePresence>
           {activeTab === "manifesto" && (
             <motion.div
               key="tab-manifesto"
-              initial={{ opacity: 0, y: 15 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.3 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15 }}
               className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center"
             >
               {/* LEFT: Champion Team Image Presentation (lg:col-span-6) */}
@@ -193,7 +193,7 @@ export const AboutSection = ({
                     <img
                       src={aboutTeamImg}
                       alt="LORD ESPORTZ Pro Champions on Stage with Trophy"
-                      loading="lazy"
+                      loading="eager"
                       decoding="async"
                       className="w-full h-full object-cover object-center filter brightness-[1.02] contrast-[1.05] transition-transform duration-700 ease-out group-hover:scale-105"
                     />
@@ -304,10 +304,10 @@ export const AboutSection = ({
           {activeTab === "players" && (
             <motion.div
               key="tab-players"
-              initial={{ opacity: 0, y: 15 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.3 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15 }}
               className="space-y-8"
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -332,14 +332,15 @@ export const AboutSection = ({
                       </div>
 
                       {/* Photo Container */}
-                      <div className="aspect-[4/5] w-full rounded-xl overflow-hidden bg-[#0A0A0C] border border-white/10 mb-3 relative">
+                      <div className="aspect-[4/5] w-full rounded-xl overflow-hidden bg-gradient-to-b from-[#181820] to-[#0A0A0C] border border-white/10 mb-3 relative">
                         <img
-                          src={player.image || `/players/${player.id}.jpg`}
+                          src={player.image || `/players/${player.id}.webp`}
                           alt={player.ign}
-                          loading="lazy"
+                          loading="eager"
+                          decoding="async"
                           className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
                           onError={(e) => {
-                            e.currentTarget.src = "/players/player-beast.jpg";
+                            e.currentTarget.src = "/players/player-beast.webp";
                           }}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />

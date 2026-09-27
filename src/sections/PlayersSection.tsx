@@ -64,7 +64,7 @@ export const PlayersSection = ({ showHeader = true }: PlayersSectionProps) => {
 
         {/* Players Sports Card Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {players.map((player, index) => {
+          {players.map((player) => {
             const isBeast = player.ign === "BEAST" || player.id === "player-beast";
             const isImageFailed = failedImages[player.id];
             const athleteImg = !isImageFailed && (player.image || player.avatarUrl || (isBeast ? "/players/player-beast.jpg" : null));
@@ -78,10 +78,10 @@ export const PlayersSection = ({ showHeader = true }: PlayersSectionProps) => {
             return (
               <motion.div
                 key={player.id}
-                initial={{ opacity: 0, y: 24 }}
+                initial={{ opacity: 0, y: 8 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
+                transition={{ duration: 0.2 }}
                 whileHover={{ y: -8 }}
                 className="group relative flex flex-col justify-between rounded-2xl bg-gradient-to-b from-[#141418] via-[#0C0C0E] to-[#070709] border border-white/10 hover:border-[#FFBE32]/70 p-4 sm:p-5 shadow-[0_15px_40px_rgba(0,0,0,0.8)] hover:shadow-[0_20px_45px_rgba(255,190,50,0.25)] transition-all duration-300 overflow-hidden"
               >
@@ -104,14 +104,14 @@ export const PlayersSection = ({ showHeader = true }: PlayersSectionProps) => {
                   </div>
 
                   {/* Athlete Visual Anchor / Player Image */}
-                  <div className="relative aspect-[4/5] sm:aspect-[3/4] max-h-[320px] sm:max-h-none w-full rounded-xl overflow-hidden bg-black/60 border border-white/5 flex items-center justify-center mb-4 group-hover:border-[#FFBE32]/40 transition-all shadow-inner">
+                  <div className="relative aspect-[4/5] sm:aspect-[3/4] max-h-[320px] sm:max-h-none w-full rounded-xl overflow-hidden bg-gradient-to-b from-[#181820] to-[#0C0C0E] border border-white/5 flex items-center justify-center mb-4 group-hover:border-[#FFBE32]/40 transition-all shadow-inner">
                     {athleteImg ? (
                       <div className="relative h-full w-full">
                         <img
                           src={athleteImg}
                           alt={`${player.ign} (${player.realName}) - Pro Free Fire Athlete for LORD ESPORTZ`}
                           onError={() => setFailedImages((prev) => ({ ...prev, [player.id]: true }))}
-                          loading="lazy"
+                          loading="eager"
                           decoding="async"
                           className="h-full w-full object-cover object-top filter contrast-105 group-hover:scale-105 transition-transform duration-500"
                         />
