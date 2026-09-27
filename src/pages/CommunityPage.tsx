@@ -4,7 +4,7 @@ import { SEO } from "../components/common/SEO";
 
 export const CommunityPage = () => {
   return (
-    <div className="min-h-screen bg-[#070709]">
+    <div className="min-h-screen bg-[#070709] w-full max-w-full overflow-x-hidden">
       <SEO
         title="LORD ESPORTZ Community | Discord, WhatsApp &amp; Gaming Guild"
         description="Join the official LORD ESPORTZ community. Connect with competitive players, participate in daily Free Fire scrims, and access official Discord and WhatsApp hubs."

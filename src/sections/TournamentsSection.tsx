@@ -135,7 +135,7 @@ export const TournamentsSection = ({
   return (
     <section
       id="tournaments"
-      className={`relative ${showHeader ? "py-24" : "py-12 sm:py-16"} px-4 sm:px-6 lg:px-8 bg-[#050505]`}
+      className={`relative ${showHeader ? "py-24" : "py-8 sm:py-12 lg:py-16"} px-4 sm:px-6 lg:px-8 bg-[#050505] overflow-hidden w-full max-w-full`}
     >
       {/* Subtle Background Glow */}
       <div className="absolute top-1/3 left-0 w-96 h-96 bg-[#FFBE32]/5 blur-[120px] pointer-events-none" />
@@ -150,9 +150,9 @@ export const TournamentsSection = ({
         )}
 
         {/* Filters Bar */}
-        <div className="mb-10 flex flex-col md:flex-row items-center justify-between gap-4 border-b border-white/10 pb-6">
+        <div className="mb-10 flex flex-col md:flex-row items-center justify-between gap-4 border-b border-white/10 pb-6 w-full max-w-full">
           {/* Game category tabs */}
-          <div className="flex flex-wrap items-center justify-center md:justify-start gap-1.5 sm:gap-2">
+          <div className="flex flex-wrap items-center justify-center md:justify-start gap-1.5 sm:gap-2 max-w-full">
             {gameFilters.map((game) => (
               <button
                 key={game}
@@ -169,7 +169,7 @@ export const TournamentsSection = ({
           </div>
 
           {/* Status filter tabs */}
-          <div className="flex items-center gap-1 bg-[#0D0D10] p-1 rounded-lg border border-white/10">
+          <div className="flex items-center gap-1 bg-[#0D0D10] p-1 rounded-lg border border-white/10 max-w-full overflow-x-auto">
             {statusFilters.map((sf) => (
               <button
                 key={sf.value}

@@ -31,7 +31,7 @@ export const TournamentsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505]">
+    <div className="min-h-screen bg-[#050505] w-full max-w-full overflow-x-hidden">
       <SEO
         title="LORD ESPORTZ Tournaments | Free Fire Circuits &amp; Scrims"
         description="Explore verified Free Fire and Free Fire MAX esports tournaments by LORD ESPORTZ. Register your squad, view prize pools, stages, schedules, and live brackets."

@@ -340,7 +340,7 @@ export const MyTournamentsPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen pt-28 sm:pt-32 pb-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+    <div className="min-h-screen pt-28 sm:pt-32 pb-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full overflow-x-hidden">
       <SEO title="My Tournaments | LORD ESPORTZ Player Hub" noindex nofollow />
       {/* Top Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-8 border-b border-white/10">

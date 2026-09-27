@@ -22,7 +22,7 @@ export const MediaPage = () => {
     }));
 
   return (
-    <div className="min-h-screen bg-[#050505]">
+    <div className="min-h-screen bg-[#050505] w-full max-w-full overflow-x-hidden">
       <SEO
         title="LORD ESPORTZ Media | Tournament Highlights, Streams &amp; VODs"
         description="Watch official tournament highlights, clutch plays, team cinematics, and broadcast VODs from LORD ESPORTZ."

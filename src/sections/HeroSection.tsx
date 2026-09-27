@@ -88,7 +88,7 @@ export const HeroSection = ({
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              className="font-display text-4xl sm:text-6xl md:text-7xl lg:text-[4.5rem] xl:text-[5.2rem] leading-[1.06] uppercase tracking-tight text-white font-extrabold"
+              className="font-display text-3xl xs:text-4xl sm:text-6xl md:text-7xl lg:text-[4.5rem] xl:text-[5.2rem] leading-[1.06] uppercase tracking-tight text-white font-extrabold"
             >
               <span className="sr-only">LORD ESPORTZ — </span>
               FORGE YOUR <br />

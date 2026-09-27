@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { TemplePattern } from "../components/common/TemplePattern";
 import logoImg from "../assets/lordz-logo.png";
@@ -13,13 +13,10 @@ import {
   Zap,
   Crosshair,
   Target,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { playersData, type Player } from "../data/players";
 import { playersApi } from "../api/players";
-import { optimizeCloudinaryUrl } from "../utils/imageOptimizer";
 import { collectiveMembers } from "../data/teams";
 
 // Social SVG Icon for Instagram
@@ -64,72 +61,21 @@ interface AboutSectionProps {
   defaultTab?: "manifesto" | "players" | "teams";
 }
 
-const memberImagePositions: Record<string, string> = {
-  "dinesh-s": "center 20%",
-  "jeremiah-paul": "center 15%",
-  "karthik-r": "center 15%",
-  founder: "center 20%",
-  "demo-community-manager": "center 10%",
-  CEO: "center 10%",
-};
-
 export const AboutSection = ({
   showHeader = true,
   defaultTab = "manifesto",
 }: AboutSectionProps) => {
   const [activeTab, setActiveTab] = useState<"manifesto" | "players" | "teams">(defaultTab);
-  const [players, setPlayers] = useState<Player[]>(() => {
-    try {
-      const cached = localStorage.getItem("lordz_pro_athletes_cache");
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {}
-    return playersData;
-  });
-  const [failedPlayerImages, setFailedPlayerImages] = useState<Record<string, boolean>>({});
+  const [athletes, setAthletes] = useState<Player[]>(playersData);
 
   useEffect(() => {
     playersApi
       .getAll()
       .then((data) => {
-        if (data && data.length > 0) {
-          setPlayers(data);
-          try {
-            localStorage.setItem("lordz_pro_athletes_cache", JSON.stringify(data));
-          } catch {}
-        }
+        if (data && data.length > 0) setAthletes(data);
       })
       .catch(() => {});
   }, []);
-
-  const teamSliderRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(true);
-
-  const checkScroll = () => {
-    if (teamSliderRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = teamSliderRef.current;
-      setCanScrollLeft(scrollLeft > 15);
-      setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 15);
-    }
-  };
-
-  useEffect(() => {
-    if (activeTab === "teams") {
-      const timer = setTimeout(checkScroll, 120);
-      return () => clearTimeout(timer);
-    }
-  }, [activeTab]);
-
-  const scrollTeam = (direction: "left" | "right") => {
-    if (teamSliderRef.current) {
-      const scrollAmount = direction === "left" ? -330 : 330;
-      teamSliderRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
-      setTimeout(checkScroll, 350);
-    }
-  };
 
   const manifesto = [
     { text: "WE DON'T JUST PLAY.", gold: false },
@@ -138,17 +84,17 @@ export const AboutSection = ({
   ];
 
   const stats = [
-    { label: "TITLES", value: "04", icon: Trophy },
-    { label: "PRIZE PURSE WON", value: "₹2L+", icon: Award },
-    { label: "CLAN COMMUNITY", value: "3K+", icon: Users },
+    { label: "NATIONAL TITLES", value: "04", icon: Trophy },
+    { label: "PRIZE PURSE WON", value: "₹15L+", icon: Award },
+    { label: "CLAN COMMUNITY", value: "50K+", icon: Users },
     { label: "TIER-1 WIN RATE", value: "92%", icon: Shield },
   ];
 
   return (
     <section
       id="about"
-      className={`relative ${showHeader ? "py-24 sm:py-28" : "py-12 sm:py-16"
-        } px-4 sm:px-6 lg:px-8 bg-[#070709] border-t border-white/5 overflow-hidden`}
+      className={`relative ${showHeader ? "py-24 sm:py-28" : "py-8 sm:py-12 lg:py-16"
+        } px-4 sm:px-6 lg:px-8 bg-[#070709] border-t border-white/5 overflow-hidden w-full max-w-full`}
     >
       {/* Background Architectural Gopuram Pattern */}
       <TemplePattern className="opacity-[0.04] scale-150" />
@@ -229,14 +175,14 @@ export const AboutSection = ({
         )}
 
         {/* Dynamic Content Based on Tab Selection */}
-        <AnimatePresence>
+        <AnimatePresence mode="wait">
           {activeTab === "manifesto" && (
             <motion.div
               key="tab-manifesto"
-              initial={{ opacity: 0, y: 8 }}
+              initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.15 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.3 }}
               className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center"
             >
               {/* LEFT: Champion Team Image Presentation (lg:col-span-6) */}
@@ -249,7 +195,7 @@ export const AboutSection = ({
                     <img
                       src={aboutTeamImg}
                       alt="LORD ESPORTZ Pro Champions on Stage with Trophy"
-                      loading="eager"
+                      loading="lazy"
                       decoding="async"
                       className="w-full h-full object-cover object-center filter brightness-[1.02] contrast-[1.05] transition-transform duration-700 ease-out group-hover:scale-105"
                     />
@@ -360,90 +306,93 @@ export const AboutSection = ({
           {activeTab === "players" && (
             <motion.div
               key="tab-players"
-              initial={{ opacity: 0, y: 8 }}
+              initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.15 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.3 }}
               className="space-y-8"
             >
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                {players.slice(0, 4).map((player) => {
-                  const rawImg =
-                    !failedPlayerImages[player.id] &&
-                    (player.image || player.avatarUrl || `/players/${player.id}.webp`);
-                  const athleteImg = rawImg ? optimizeCloudinaryUrl(rawImg, 500) : "";
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-5">
+                {athletes.slice(0, 4).map((player) => {
+                  const cleanIgn = (player.ign || "").trim();
+                  const cleanRealName = (player.realName || "").trim();
+                  const isBeast = cleanIgn === "BEAST" || player.id === "player-beast";
+                  const athleteImg = player.image || player.avatarUrl || (isBeast ? "/players/player-beast.jpg" : null);
+                  const rawInsta = (player.instagram || "").replace(/^insta:/i, "").replace(/^@/, "").trim();
+                  const instaUrl = rawInsta ? `https://instagram.com/${rawInsta}` : null;
+                  const instaHandleDisplay = rawInsta ? `@${rawInsta}` : "@lordesports";
 
                   return (
                     <div
                       key={player.id}
-                      className="group relative rounded-2xl bg-gradient-to-b from-[#141418] via-[#0C0C0E] to-[#070709] border border-white/10 hover:border-[#FFBE32]/70 p-4 shadow-[0_15px_40px_rgba(0,0,0,0.8)] hover:shadow-[0_20px_45px_rgba(255,190,50,0.2)] transition-all flex flex-col justify-between overflow-hidden"
+                      className="group relative rounded-xl sm:rounded-2xl bg-gradient-to-b from-[#141418] via-[#0C0C0E] to-[#070709] border border-white/10 hover:border-[#FFBE32]/70 p-2.5 xs:p-3 sm:p-4 shadow-[0_15px_40px_rgba(0,0,0,0.8)] hover:shadow-[0_20px_45px_rgba(255,190,50,0.2)] transition-all flex flex-col justify-between overflow-hidden"
                     >
                       {/* Gold Strip */}
                       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#FFBE32] to-transparent opacity-40 group-hover:opacity-100 transition-opacity" />
 
                       <div>
                         {/* Athlete Role & Team */}
-                        <div className="flex items-center justify-between mb-3 text-[10px] font-heading font-bold uppercase">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-black/70 border border-white/10 text-gray-300">
+                        <div className="flex items-center justify-between mb-2 sm:mb-3 text-[9px] xs:text-[10px] font-heading font-bold uppercase">
+                          <span className="inline-flex items-center gap-1 px-1.5 xs:px-2.5 py-0.5 sm:py-1 rounded bg-black/70 border border-white/10 text-gray-300">
                             {getRoleIcon(player.role)}
                             {player.role}
                           </span>
-                          <span className="font-mono text-[#FFBE32] bg-[#FFBE32]/10 px-2 py-0.5 rounded border border-[#FFBE32]/25">
+                          <span className="font-mono text-[#FFBE32] bg-[#FFBE32]/10 px-1.5 xs:px-2 py-0.5 rounded border border-[#FFBE32]/25">
                             #{player.jerseyNumber || "00"}
                           </span>
                         </div>
 
                         {/* Photo Container */}
-                        <div className="aspect-[4/5] w-full rounded-xl overflow-hidden bg-gradient-to-b from-[#181820] to-[#0A0A0C] border border-white/10 mb-3 relative flex items-center justify-center">
+                        <div className="aspect-[3/4] w-full rounded-lg sm:rounded-xl overflow-hidden bg-gradient-to-b from-[#16161B] via-[#0D0D10] to-[#08080A] border border-white/10 mb-2 sm:mb-3 relative">
                           {athleteImg ? (
                             <img
                               src={athleteImg}
-                              alt={`${player.ign} (${player.realName})`}
-                              loading="eager"
+                              alt={`${cleanIgn} (${cleanRealName}) - Pro Free Fire Athlete for LORD ESPORTZ`}
+                              loading="lazy"
                               decoding="async"
-                              fetchPriority="high"
-                              className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
-                              onError={() => {
-                                setFailedPlayerImages((prev) => ({ ...prev, [player.id]: true }));
+                              className="w-full h-full object-cover object-top filter contrast-105 group-hover:scale-105 transition-transform duration-500"
+                              onError={(e) => {
+                                e.currentTarget.src = "/players/player-beast.jpg";
                               }}
                             />
                           ) : (
-                            <div className="w-full h-full flex flex-col items-center justify-center font-display text-3xl font-black text-[#FFBE32]/80">
-                              {player.ign?.slice(0, 2) || "LZ"}
+                            <div className="w-full h-full flex flex-col items-center justify-center p-2 sm:p-4 text-center bg-gradient-to-b from-neutral-900 to-black">
+                              <span className="font-display text-xl sm:text-3xl font-bold text-[#FFBE32]">{cleanIgn.slice(0, 2) || "LZ"}</span>
                             </div>
                           )}
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" />
-                          <div className="absolute bottom-2.5 left-2.5 right-2.5">
-                            <span className="font-display text-xl uppercase tracking-wider text-white group-hover:text-[#FFBE32] transition-colors block leading-tight truncate">
-                              {player.ign}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+                          <div className="absolute bottom-1.5 left-1.5 right-1.5 sm:bottom-2.5 sm:left-2.5 sm:right-2.5 flex items-center justify-between pointer-events-none">
+                            <span className="font-display text-sm sm:text-lg uppercase tracking-wider text-white group-hover:text-[#FFBE32] transition-colors truncate">
+                              {cleanIgn}
                             </span>
-                            <span className="text-[10px] font-heading uppercase text-gray-400 block truncate">
-                              {player.realName}
+                            <span className="text-[9px] sm:text-[10px] font-heading uppercase text-gray-400 shrink-0 hidden xs:inline">
+                              {cleanRealName}
                             </span>
                           </div>
                         </div>
 
-                        <p className="text-xs text-gray-400 font-body leading-relaxed line-clamp-2">
-                          {player.about || player.featuredQuote || "Pro athlete competing for LORD ESPORTZ."}
-                        </p>
+                        <div className="min-h-[40px] sm:min-h-[48px] flex flex-col justify-center">
+                          <p className="text-[10px] xs:text-[11px] sm:text-xs text-gray-400 font-body leading-relaxed line-clamp-2">
+                            {player.about || player.featuredQuote || "Pro athlete competing under the banner of LORD ESPORTZ."}
+                          </p>
+                        </div>
                       </div>
 
-                      <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs">
-                        <span className="font-mono text-[10px] text-gray-500">{player.game || "FREE FIRE MAX"}</span>
-                        {player.instagram && (
+                      <div className="mt-2.5 sm:mt-4 pt-2 sm:pt-3 border-t border-white/5 flex items-center justify-between text-[10px] sm:text-xs shrink-0">
+                        <span className="font-mono text-[9px] sm:text-[10px] text-gray-500">FREE FIRE</span>
+                        {instaUrl ? (
                           <a
-                            href={
-                              player.instagram.startsWith("http")
-                                ? player.instagram
-                                : `https://instagram.com/${player.instagram.replace(/^@/, "")}`
-                            }
+                            href={instaUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-[11px] text-[#FFBE32] hover:underline"
+                            className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] text-[#FFBE32] hover:underline truncate max-w-[110px] sm:max-w-[150px]"
+                            title={`Follow ${cleanIgn} on Instagram`}
                           >
-                            <InstagramIcon className="h-3 w-3" />
-                            <span>{player.instagram}</span>
+                            <InstagramIcon className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
+                            <span className="truncate">{instaHandleDisplay}</span>
                           </a>
+                        ) : (
+                          <span className="font-mono text-[9px] sm:text-[10px] text-gray-500">@lordesports</span>
                         )}
                       </div>
                     </div>
@@ -472,175 +421,89 @@ export const AboutSection = ({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
               transition={{ duration: 0.3 }}
-              className="space-y-6"
+              className="space-y-8"
             >
-              {/* Slider Header Controls */}
-              <div className="flex items-center justify-between px-1">
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-mono text-gray-300">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#FFBE32] animate-pulse" />
-                    ALL MEMBERS ({collectiveMembers.length})
-                  </span>
-                  <span className="hidden sm:inline-block text-[11px] text-gray-500 font-mono">
-                    SLIDE TO VIEW FULL COLLECTIVE
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => scrollTeam("left")}
-                    disabled={!canScrollLeft}
-                    aria-label="Previous members"
-                    className={`p-2 sm:p-2.5 rounded-xl border transition-all ${
-                      canScrollLeft
-                        ? "bg-[#141418] border-white/15 text-white hover:border-[#FFBE32] hover:text-[#FFBE32] hover:bg-[#1a1a22] shadow-lg active:scale-95 cursor-pointer"
-                        : "bg-[#0d0d10] border-white/5 text-gray-600 opacity-40 cursor-not-allowed"
-                    }`}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-5">
+                {collectiveMembers.slice(0, 4).map((member) => (
+                  <div
+                    key={member.id}
+                    className="group relative rounded-xl sm:rounded-2xl bg-gradient-to-b from-[#141418] via-[#0C0C0E] to-[#070709] border border-white/10 hover:border-[#FFBE32]/70 p-2.5 xs:p-3 sm:p-4 shadow-[0_15px_40px_rgba(0,0,0,0.8)] hover:shadow-[0_20px_45px_rgba(255,190,50,0.2)] transition-all flex flex-col justify-between overflow-hidden"
                   >
-                    <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => scrollTeam("right")}
-                    disabled={!canScrollRight}
-                    aria-label="Next members"
-                    className={`p-2 sm:p-2.5 rounded-xl border transition-all ${
-                      canScrollRight
-                        ? "bg-[#141418] border-white/15 text-white hover:border-[#FFBE32] hover:text-[#FFBE32] hover:bg-[#1a1a22] shadow-lg active:scale-95 cursor-pointer"
-                        : "bg-[#0d0d10] border-white/5 text-gray-600 opacity-40 cursor-not-allowed"
-                    }`}
-                  >
-                    <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
-                  </button>
-                </div>
-              </div>
+                    {/* Gold Strip */}
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#FFBE32] to-transparent opacity-40 group-hover:opacity-100 transition-opacity" />
 
-              {/* Slider Track with Optional Floating Side Arrows */}
-              <div className="relative group/slider">
-                {/* Edge Gradient Shadows */}
-                {canScrollLeft && (
-                  <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-8 sm:w-16 bg-gradient-to-r from-[#070709] to-transparent z-20 transition-opacity" />
-                )}
-                {canScrollRight && (
-                  <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 sm:w-16 bg-gradient-to-l from-[#070709] to-transparent z-20 transition-opacity" />
-                )}
-
-                {/* Floating Chevron Buttons for Desktop */}
-                {canScrollLeft && (
-                  <button
-                    type="button"
-                    onClick={() => scrollTeam("left")}
-                    aria-label="Slide Left"
-                    className="hidden lg:flex absolute left-3 top-1/2 -translate-y-1/2 z-30 p-2.5 rounded-full bg-black/80 backdrop-blur-md border border-[#FFBE32]/40 text-[#FFBE32] shadow-[0_0_20px_rgba(0,0,0,0.8)] hover:bg-[#FFBE32] hover:text-black transition-all hover:scale-110 active:scale-95 cursor-pointer"
-                  >
-                    <ChevronLeft className="h-5 w-5" />
-                  </button>
-                )}
-                {canScrollRight && (
-                  <button
-                    type="button"
-                    onClick={() => scrollTeam("right")}
-                    aria-label="Slide Right"
-                    className="hidden lg:flex absolute right-3 top-1/2 -translate-y-1/2 z-30 p-2.5 rounded-full bg-black/80 backdrop-blur-md border border-[#FFBE32]/40 text-[#FFBE32] shadow-[0_0_20px_rgba(0,0,0,0.8)] hover:bg-[#FFBE32] hover:text-black transition-all hover:scale-110 active:scale-95 cursor-pointer"
-                  >
-                    <ChevronRight className="h-5 w-5" />
-                  </button>
-                )}
-
-                {/* Horizontal Scrollable Container */}
-                <div
-                  ref={teamSliderRef}
-                  onScroll={checkScroll}
-                  className="flex gap-5 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-4 pt-1 px-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-                >
-                  {collectiveMembers.map((member) => (
-                    <div
-                      key={member.id}
-                      className="w-[270px] sm:w-[290px] md:w-[305px] flex-shrink-0 snap-start group relative rounded-2xl bg-gradient-to-b from-[#141418] via-[#0C0C0E] to-[#070709] border border-white/10 hover:border-[#FFBE32]/70 p-4 shadow-[0_15px_40px_rgba(0,0,0,0.8)] hover:shadow-[0_20px_45px_rgba(255,190,50,0.2)] transition-all flex flex-col justify-between overflow-hidden"
-                    >
-                      {/* Gold Strip */}
-                      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#FFBE32] to-transparent opacity-40 group-hover:opacity-100 transition-opacity" />
-
-                      <div>
-                        {/* Photo / Portrait */}
-                        <div className="aspect-[4/5] w-full rounded-xl overflow-hidden bg-gradient-to-b from-[#181820] to-[#0A0A0C] border border-white/10 mb-3 relative">
-                          {member.avatar ? (
-                            <img
-                              src={member.avatar}
-                              alt={member.name}
-                              loading="eager"
-                              decoding="async"
-                              style={{ objectPosition: memberImagePositions[member.id] || "center 20%" }}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                              onError={(e) => {
-                                e.currentTarget.style.display = "none";
-                                const fallback = e.currentTarget.nextElementSibling as HTMLElement;
-                                if (fallback) fallback.style.display = "flex";
-                              }}
-                            />
-                          ) : null}
-                          <div
-                            style={{ display: member.avatar ? "none" : "flex" }}
-                            className="w-full h-full flex flex-col items-center justify-center font-display text-2xl font-black text-white/90"
-                          >
+                    <div>
+                      {/* Photo / Portrait */}
+                      <div className="aspect-[4/5] w-full rounded-lg sm:rounded-xl overflow-hidden bg-[#0A0A0C] border border-white/10 mb-2 sm:mb-3 relative">
+                        {member.avatar ? (
+                          <img
+                            src={member.avatar}
+                            alt={member.name}
+                            loading="lazy"
+                            className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center font-display text-xl sm:text-2xl font-black text-white/90">
                             {member.initials || "LZ"}
                           </div>
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
-                          <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between text-[10px] font-mono">
-                            <span className="px-2 py-0.5 rounded bg-black/80 border border-white/10 text-gray-300">
-                              //{member.handle}
-                            </span>
-                            <span className="text-[#FFBE32]">{member.divisions[0]}</span>
-                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+                        <div className="absolute bottom-1.5 left-1.5 right-1.5 sm:bottom-2.5 sm:left-2.5 sm:right-2.5 flex items-center justify-between text-[8px] xs:text-[9px] sm:text-[10px] font-mono">
+                          <span className="px-1.5 xs:px-2 py-0.5 rounded bg-black/80 border border-white/10 text-gray-300 truncate max-w-full">
+                            //{member.handle}
+                          </span>
+                          <span className="text-[#FFBE32] hidden xs:inline">{member.divisions[0]}</span>
                         </div>
-
-                        <h4 className="font-heading text-base font-bold text-white group-hover:text-[#FFBE32] transition-colors leading-snug mb-1">
-                          {member.name}
-                        </h4>
-                        <p className="text-[11px] text-gray-400 font-body line-clamp-2">
-                          {member.primaryRole}
-                        </p>
                       </div>
 
-                      <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs">
-                        <span className="font-mono text-[10px] text-gray-500">OPERATIONAL TEAM</span>
-                        <div className="flex items-center gap-1.5">
-                          {member.linkedin && (
-                            <a
-                              href={
-                                member.linkedin.startsWith("http")
-                                  ? member.linkedin
-                                  : `https://linkedin.com/in/${member.linkedin}`
-                              }
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-1 rounded bg-[#0A66C2]/20 hover:bg-[#0A66C2]/40 text-[#70B5F9] transition-colors"
-                              title="LinkedIn"
-                            >
-                              <LinkedInIcon className="h-3 w-3" />
-                            </a>
-                          )}
-                          {member.instagram && (
-                            <a
-                              href={
-                                member.instagram.startsWith("http")
-                                  ? member.instagram
-                                  : `https://instagram.com/${member.instagram.replace(/^@/, "")}`
-                              }
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-1 rounded bg-white/5 hover:bg-white/15 text-[#E1306C] transition-colors"
-                              title="Instagram"
-                            >
-                              <InstagramIcon className="h-3 w-3" />
-                            </a>
-                          )}
-                        </div>
+                      <h4 className="font-heading text-xs xs:text-sm sm:text-base font-bold text-white group-hover:text-[#FFBE32] transition-colors leading-snug mb-0.5 sm:mb-1 truncate">
+                        {member.name}
+                      </h4>
+                      <p className="text-[10px] xs:text-[11px] text-gray-400 font-body line-clamp-2">
+                        {member.primaryRole}
+                      </p>
+                    </div>
+
+                    <div className="mt-2.5 sm:mt-4 pt-2 sm:pt-3 border-t border-white/5 flex items-center justify-between text-[10px] sm:text-xs">
+                      <span className="font-mono text-[9px] sm:text-[10px] text-gray-500">OPERATIONAL</span>
+                      <div className="flex items-center gap-1 sm:gap-1.5">
+                        {member.linkedin && (
+                          <a
+                            href={
+                              member.linkedin.startsWith("http")
+                                ? member.linkedin
+                                : `https://linkedin.com/in/${member.linkedin}`
+                            }
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1 rounded bg-[#0A66C2]/20 hover:bg-[#0A66C2]/40 text-[#70B5F9] transition-colors"
+                            title="LinkedIn"
+                          >
+                            <LinkedInIcon className="h-3 w-3" />
+                          </a>
+                        )}
+                        {member.instagram && (
+                          <a
+                            href={
+                              member.instagram.startsWith("http")
+                                ? member.instagram
+                                : `https://instagram.com/${member.instagram.replace(/^@/, "")}`
+                            }
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1 rounded bg-white/5 hover:bg-white/15 text-[#E1306C] transition-colors"
+                            title="Instagram"
+                          >
+                            <InstagramIcon className="h-3 w-3" />
+                          </a>
+                        )}
                       </div>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
 
               {/* View Full Collective Button */}

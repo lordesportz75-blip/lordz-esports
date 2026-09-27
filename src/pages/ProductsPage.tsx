@@ -680,7 +680,7 @@ export const ProductsPage = () => {
   }, [products]);
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white pt-28 pb-24">
+    <div className="min-h-screen bg-[#050505] text-white pt-28 pb-24 w-full max-w-full overflow-x-hidden relative">
       <SEO
         title="LORD ESPORTZ Official Merchandise | Pro Combat Jerseys &amp; Gaming Gear"
         description="Shop official LORD ESPORTZ pro merchandise. High-performance tournament combat jerseys with custom gamer tags, heavyweight hoodies, XXL gaming mousepads, and esports gear."
@@ -693,7 +693,7 @@ export const ProductsPage = () => {
       />
 
       {/* Ambient Lighting */}
-      <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-radial from-[#FFBE32]/10 via-transparent to-transparent blur-[160px] pointer-events-none" />
+      <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[900px] max-w-[100vw] h-[500px] bg-radial from-[#FFBE32]/10 via-transparent to-transparent blur-[160px] pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Page Hero Header */}

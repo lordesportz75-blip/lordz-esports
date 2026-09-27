@@ -79,7 +79,7 @@ export const TheCollectiveSection = ({
       id="teams"
       className={`relative ${
         showHeader ? "py-24" : "py-12 sm:py-16"
-      } px-4 sm:px-6 lg:px-8 bg-[#070709] border-t border-white/5`}
+      } px-4 sm:px-6 lg:px-8 bg-[#070709] border-t border-white/5 overflow-hidden w-full max-w-full`}
     >
       {/* Background Ambience */}
       <div className="absolute left-1/3 top-1/2 -translate-y-1/2 w-96 h-96 bg-[#FFBE32]/[0.03] blur-[150px] pointer-events-none" />
@@ -127,21 +127,21 @@ export const TheCollectiveSection = ({
         </div>
 
         {/* Members Matrix Grid: 2 Columns on Mobile, 2 on Tablet, 4 on Desktop */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 xs:gap-3.5 sm:gap-6">
           {filteredMembers.map((member) => {
             const objectPosition = memberImagePositions[member.id] || "center 20%";
 
             return (
               <div
                 key={member.id}
-                className="group relative rounded-2xl bg-gradient-to-b from-[#141418] via-[#0C0C0E] to-[#070709] border border-white/10 hover:border-[#FFBE32]/60 p-4 sm:p-5 shadow-[0_15px_40px_rgba(0,0,0,0.8)] hover:shadow-[0_20px_45px_rgba(255,190,50,0.2)] transition-all duration-300 flex flex-col justify-between overflow-hidden"
+                className="group relative rounded-xl sm:rounded-2xl bg-gradient-to-b from-[#141418] via-[#0C0C0E] to-[#070709] border border-white/10 hover:border-[#FFBE32]/60 p-2.5 xs:p-3 sm:p-5 shadow-[0_15px_40px_rgba(0,0,0,0.8)] hover:shadow-[0_20px_45px_rgba(255,190,50,0.2)] transition-all duration-300 flex flex-col justify-between overflow-hidden min-w-0"
               >
                 {/* Top Chamfer Cut Gold Strip */}
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#FFBE32] to-transparent opacity-40 group-hover:opacity-100 transition-opacity" />
 
                 <div>
                   {/* Dedicated Member Portrait Container */}
-                  <div className="relative aspect-[4/5] w-full rounded-xl overflow-hidden bg-gradient-to-b from-[#181820] to-[#0A0A0C] border border-white/10 mb-4 group-hover:border-[#FFBE32]/40 transition-colors">
+                  <div className="relative aspect-[4/5] w-full rounded-lg sm:rounded-xl overflow-hidden bg-gradient-to-b from-[#181820] to-[#0A0A0C] border border-white/10 mb-2 sm:mb-4 group-hover:border-[#FFBE32]/40 transition-colors">
                     {member.avatar ? (
                       <img
                         src={member.avatar}
@@ -163,13 +163,13 @@ export const TheCollectiveSection = ({
                     {/* Monogram Initials Fallback */}
                     <div
                       style={{ display: member.avatar ? "none" : "flex" }}
-                      className="w-full h-full flex flex-col items-center justify-center p-4 bg-gradient-to-b from-[#16161B] via-[#0D0D10] to-[#08080A]"
+                      className="w-full h-full flex flex-col items-center justify-center p-2 sm:p-4 bg-gradient-to-b from-[#16161B] via-[#0D0D10] to-[#08080A]"
                     >
-                      <div className="w-14 h-14 rounded-full border border-white/10 flex items-center justify-center font-display font-black text-xl text-white/90 group-hover:border-[#FFBE32]/60 group-hover:text-[#FFBE32] transition-colors">
+                      <div className="w-10 h-10 xs:w-12 xs:h-12 sm:w-14 sm:h-14 rounded-full border border-white/10 flex items-center justify-center font-display font-black text-sm xs:text-base sm:text-xl text-white/90 group-hover:border-[#FFBE32]/60 group-hover:text-[#FFBE32] transition-colors">
                         {member.initials || "LZ"}
                       </div>
                       {member.handle && (
-                        <span className="font-mono text-[10px] text-gray-500 mt-2 tracking-widest uppercase">
+                        <span className="font-mono text-[9px] xs:text-[10px] text-gray-500 mt-1.5 tracking-widest uppercase truncate max-w-full px-1">
                           //{member.handle}
                         </span>
                       )}
@@ -179,31 +179,31 @@ export const TheCollectiveSection = ({
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
 
                     {/* Bottom Floating Tag in Image */}
-                    <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between text-[10px] font-mono">
-                      <span className="px-2 py-0.5 rounded bg-black/80 border border-white/10 text-gray-300">
+                    <div className="absolute bottom-1.5 left-1.5 right-1.5 xs:bottom-2 xs:left-2 xs:right-2 sm:bottom-2.5 sm:left-2.5 sm:right-2.5 flex items-center justify-between text-[8px] xs:text-[9px] sm:text-[10px] font-mono">
+                      <span className="px-1.5 xs:px-2 py-0.5 rounded bg-black/80 border border-white/10 text-gray-300 truncate max-w-full">
                         //{member.handle}
                       </span>
                     </div>
                   </div>
 
                   {/* Profile Header & Social Actions */}
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-[#FFBE32]">
+                  <div className="flex items-center justify-between gap-1 sm:gap-2 mb-1.5 sm:mb-2">
+                    <span className="text-[9px] xs:text-[10px] font-mono uppercase tracking-wider text-[#FFBE32] truncate">
                       {member.divisions[0] || "CORE"}
                     </span>
 
                     {/* Social Connect Badges */}
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
                       {member.linkedin && (
                         <a
                           href={formatLinkedInUrl(member.linkedin)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#0A66C2]/20 hover:bg-[#0A66C2]/40 border border-[#0A66C2]/40 hover:border-[#0A66C2] text-[#70B5F9] hover:text-white transition-all text-[10px] font-mono group/linkedin"
+                          className="inline-flex items-center gap-1 px-1.5 xs:px-2 py-0.5 rounded-full bg-[#0A66C2]/20 hover:bg-[#0A66C2]/40 border border-[#0A66C2]/40 hover:border-[#0A66C2] text-[#70B5F9] hover:text-white transition-all text-[9px] xs:text-[10px] font-mono group/linkedin"
                           title={`Connect with ${member.name} on LinkedIn`}
                         >
-                          <LinkedInIcon className="h-3 w-3 text-[#0A66C2] group-hover/linkedin:text-[#70B5F9]" />
-                          <span className="font-semibold">Connect</span>
+                          <LinkedInIcon className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-[#0A66C2] group-hover/linkedin:text-[#70B5F9]" />
+                          <span className="font-semibold hidden xs:inline">Connect</span>
                         </a>
                       )}
 
@@ -212,37 +212,37 @@ export const TheCollectiveSection = ({
                           href={formatInstagramUrl(member.instagram)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center justify-center p-1.5 rounded-full bg-white/5 hover:bg-gradient-to-tr hover:from-[#E1306C]/30 hover:to-[#F56040]/30 border border-white/10 hover:border-[#E1306C]/60 text-gray-400 hover:text-white transition-all"
+                          className="inline-flex items-center justify-center p-1 xs:p-1.5 rounded-full bg-white/5 hover:bg-gradient-to-tr hover:from-[#E1306C]/30 hover:to-[#F56040]/30 border border-white/10 hover:border-[#E1306C]/60 text-gray-400 hover:text-white transition-all"
                           title={`Follow ${member.name} on Instagram`}
                         >
-                          <InstagramIcon className="h-3 w-3 text-[#E1306C]" />
+                          <InstagramIcon className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-[#E1306C]" />
                         </a>
                       )}
                     </div>
                   </div>
 
-                  {/* Member Name */}
-                  <h4 className="font-heading text-lg font-bold text-white group-hover:text-[#FFBE32] transition-colors leading-tight mb-1">
+                  {/* Member Name - Retains original alignment, typography, and styling */}
+                  <h4 className="font-heading text-xs xs:text-sm sm:text-lg font-bold text-white group-hover:text-[#FFBE32] transition-colors leading-tight mb-0.5 sm:mb-1 truncate">
                     {member.name || (member.handle ? member.handle.replace(/^[//_]+/, "") : "Member")}
                   </h4>
 
-                  {/* Role */}
-                  <p className="text-xs text-gray-300 font-medium leading-snug mb-2 line-clamp-2">
+                  {/* Role - Retains original alignment and styling */}
+                  <p className="text-[10px] xs:text-[11px] sm:text-xs text-gray-300 font-medium leading-snug mb-1.5 sm:mb-2 line-clamp-2">
                     {member.primaryRole}
                   </p>
 
                   {/* Focus Description */}
-                  <p className="text-[11px] text-gray-400 font-body leading-relaxed pt-2 border-t border-white/5 line-clamp-3">
+                  <p className="text-[9px] xs:text-[10px] sm:text-[11px] text-gray-400 font-body leading-relaxed pt-1.5 sm:pt-2 border-t border-white/5 line-clamp-2 sm:line-clamp-3">
                     {member.focus}
                   </p>
                 </div>
 
                 {/* Division Chips Footer */}
-                <div className="mt-4 pt-3 border-t border-white/5 flex flex-wrap gap-1">
+                <div className="mt-2.5 sm:mt-4 pt-2 sm:pt-3 border-t border-white/5 flex flex-wrap gap-1">
                   {member.divisions.map((div, i) => (
                     <span
                       key={i}
-                      className="px-2 py-0.5 rounded text-[9px] font-mono text-gray-400 bg-white/5 border border-white/5"
+                      className="px-1.5 xs:px-2 py-0.5 rounded text-[8px] xs:text-[9px] font-mono text-gray-400 bg-white/5 border border-white/5"
                     >
                       {div}
                     </span>

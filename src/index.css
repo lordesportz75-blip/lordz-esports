@@ -30,6 +30,9 @@ html {
   background-color: #050505;
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
 }
 
 body {
@@ -39,9 +42,19 @@ body {
   color: #FFFFFF;
   font-family: 'Poppins', sans-serif;
   overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
+  position: relative;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-overflow-scrolling: touch;
+}
+
+#root {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100vh;
+  overflow-x: clip;
 }
 
 /* Custom Typography Utility Classes - Poppins Styling */

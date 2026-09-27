@@ -39,7 +39,7 @@ export const NewsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#070709]">
+    <div className="min-h-screen bg-[#070709] w-full max-w-full overflow-x-hidden">
       <SEO
         title="LORD ESPORTZ News | Tournament Briefs &amp; Roster Updates"
         description="Stay up to date with the latest dispatches, competitive match debriefs, tournament announcements, and roster updates from LORD ESPORTZ."

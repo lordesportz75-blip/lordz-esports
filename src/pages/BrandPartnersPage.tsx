@@ -233,7 +233,7 @@ export const BrandPartnersPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white pt-28 pb-24">
+    <div className="min-h-screen bg-[#050505] text-white pt-28 pb-24 w-full max-w-full overflow-x-hidden relative">
       <SEO
         title="Official Brand Partners &amp; Sponsors | LORD ESPORTZ"
         description="Explore official brands, industry leaders, gaming platforms, and corporate sponsors partnering with LORD ESPORTZ."
@@ -245,7 +245,7 @@ export const BrandPartnersPage = () => {
       />
 
       {/* Background Ambience */}
-      <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[1000px] h-[450px] bg-radial from-[#FFBE32]/8 via-transparent to-transparent blur-[160px] pointer-events-none" />
+      <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[1000px] max-w-[100vw] h-[450px] bg-radial from-[#FFBE32]/8 via-transparent to-transparent blur-[160px] pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Page Hero Header */}

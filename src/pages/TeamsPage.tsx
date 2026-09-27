@@ -172,13 +172,13 @@ export const TeamsPage = () => {
       {/* ========================================================================= */}
       {/* 1. INTRODUCTION / HERO SECTION */}
       {/* ========================================================================= */}
-      <section className="relative pt-32 sm:pt-40 pb-16 sm:pb-24 border-b border-white/[0.07] overflow-hidden">
+      <section className="relative pt-20 sm:pt-36 md:pt-40 pb-10 sm:pb-20 md:pb-24 border-b border-white/[0.07] overflow-hidden">
         {/* Subtle Ambient Background Warmth */}
         <div className="absolute top-0 right-1/3 w-96 h-96 bg-[#FFBE32]/[0.02] blur-[160px] pointer-events-none" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Eyebrow Label */}
-          <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-center gap-3 mb-3 sm:mb-6">
             <span className="w-1.5 h-1.5 rounded-full bg-[#FFBE32]" />
             <span className="font-mono text-xs uppercase tracking-[0.25em] text-[#A0A0A0]">
               LORD ESPORTZ / THE COLLECTIVE

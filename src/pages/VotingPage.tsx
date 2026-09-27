@@ -218,7 +218,7 @@ export const VotingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white selection:bg-[#FFBE32] selection:text-black">
+    <div className="min-h-screen bg-[#050505] text-white selection:bg-[#FFBE32] selection:text-black w-full max-w-full overflow-x-hidden">
       <SEO
         title="LORD ESPORTZ Fan Awards Voting | Vote for MVP of the Season"
         description="Cast your vote for the MVP of the season, top fraggers, and community awards in official LORD ESPORTZ fan polls."

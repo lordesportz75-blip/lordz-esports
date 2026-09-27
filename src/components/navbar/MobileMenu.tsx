@@ -54,7 +54,7 @@ export const MobileMenu = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[8000] xl:hidden bg-black/98 backdrop-blur-2xl flex flex-col justify-between p-5 sm:p-6 overflow-y-auto"
+          className="fixed inset-0 z-[8000] xl:hidden bg-[#050505]/98 backdrop-blur-2xl flex flex-col justify-between p-4 sm:p-6 pb-6 overflow-y-auto"
         >
           {/* Header */}
           <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-[#FFBE32]/20 shrink-0">

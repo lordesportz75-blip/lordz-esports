@@ -104,7 +104,7 @@ export const PartnersPage = () => {
   const bottomRowPlans = plans.slice(3, 5);
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white pt-28 pb-20">
+    <div className="min-h-screen bg-[#050505] text-white pt-20 sm:pt-28 pb-14 sm:pb-20 w-full max-w-full overflow-x-hidden relative">
       <SEO
         title="Partner With Us | Esports Sponsorship &amp; Collaboration | LORD ESPORTZ"
         description="Collaborate with LORD ESPORTZ. Choose from customized sponsorship tiers, brand integration in premier tournaments, community activations, and broadcast features."
@@ -116,8 +116,8 @@ export const PartnersPage = () => {
       />
 
       {/* Background Ambience */}
-      <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-radial from-[#FFBE32]/10 via-transparent to-transparent blur-[160px] pointer-events-none" />
-      <div className="absolute top-96 right-10 w-[450px] h-[450px] bg-purple-600/5 blur-[150px] pointer-events-none" />
+      <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[900px] max-w-[100vw] h-[500px] bg-radial from-[#FFBE32]/10 via-transparent to-transparent blur-[160px] pointer-events-none" />
+      <div className="absolute top-96 right-0 max-w-full w-[450px] h-[450px] bg-purple-600/5 blur-[150px] pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Page Hero Header */}

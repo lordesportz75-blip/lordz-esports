@@ -394,7 +394,7 @@ export const TournamentDetailPage: React.FC = () => {
 
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white selection:bg-[#FFBE32] selection:text-black">
+    <div className="min-h-screen bg-[#050505] text-white selection:bg-[#FFBE32] selection:text-black w-full max-w-full overflow-x-hidden">
       <SEO
         title={`${tournament.title} | LORD ESPORTZ Tournament`}
         description={
@@ -431,7 +431,7 @@ export const TournamentDetailPage: React.FC = () => {
           <div className="absolute inset-0 bg-gradient-to-r from-[#050505] via-transparent to-[#050505]" />
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-12 z-10">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-28 pb-10 sm:pb-12 z-10">
           <Link
             to="/tournaments"
             className="inline-flex items-center gap-1.5 text-xs font-heading font-bold uppercase tracking-wider text-gray-400 hover:text-white mb-6 transition-colors"
@@ -524,7 +524,7 @@ export const TournamentDetailPage: React.FC = () => {
             </div>
 
             {/* DYNAMIC REGISTRATION CARD */}
-            <div className="p-6 rounded-2xl bg-black/80 border-2 border-[#FFBE32]/40 backdrop-blur-xl shadow-[0_0_30px_rgba(255,190,50,0.15)] flex flex-col justify-between min-w-[280px]">
+            <div className="p-4 xs:p-6 rounded-2xl bg-black/80 border-2 border-[#FFBE32]/40 backdrop-blur-xl shadow-[0_0_30px_rgba(255,190,50,0.15)] flex flex-col justify-between w-full sm:min-w-[280px]">
               <div>
                 <div className="text-[10px] font-heading font-extrabold uppercase tracking-widest text-gray-400">
                   REGISTRATION STATUS

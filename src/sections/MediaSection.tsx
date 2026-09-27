@@ -85,7 +85,7 @@ export const MediaSection = ({
   return (
     <section
       id="media"
-      className={`relative ${showHeader ? "py-24" : "py-12 sm:py-16"} px-4 sm:px-6 lg:px-8 bg-[#050505]`}
+      className={`relative ${showHeader ? "py-24" : "py-8 sm:py-12 lg:py-16"} px-4 sm:px-6 lg:px-8 bg-[#050505] overflow-hidden w-full max-w-full`}
     >
       <div className="max-w-7xl mx-auto">
         {showHeader && (
@@ -101,7 +101,7 @@ export const MediaSection = ({
           <div className="mb-12">
             <div
               onClick={() => onPlayMedia(featuredVideo)}
-              className="group relative w-full rounded-2xl border border-[#FFBE32]/35 bg-black overflow-hidden cursor-pointer shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_30px_rgba(255,190,50,0.15)] aspect-[16/9] sm:aspect-[21/9] flex items-end p-6 sm:p-10"
+              className="group relative w-full rounded-2xl border border-[#FFBE32]/35 bg-black overflow-hidden cursor-pointer shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_30px_rgba(255,190,50,0.15)] hover:border-[#FFBE32]/70 aspect-[16/10] sm:aspect-[16/9] lg:aspect-[21/9] min-h-[250px] sm:min-h-[340px] lg:min-h-[420px] flex flex-col justify-between p-4 xs:p-5 sm:p-8 lg:p-10 transition-colors"
             >
               {/* Background Graphic Preview */}
               <div className="absolute inset-0 z-0">
@@ -110,35 +110,50 @@ export const MediaSection = ({
                   alt="Featured Stream"
                   loading="lazy"
                   decoding="async"
-                  className="h-full w-full object-cover object-center filter brightness-60 group-hover:scale-105 transition-transform duration-700 ease-out"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = jerseyPromoImg;
+                  }}
+                  className="h-full w-full object-cover object-center filter brightness-85 group-hover:scale-105 transition-transform duration-700 ease-out"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
+                {/* Clean vignette overlays preserving player visibility in center */}
+                <div className="absolute inset-x-0 top-0 h-20 sm:h-28 bg-gradient-to-b from-black/80 via-black/35 to-transparent pointer-events-none" />
+                <div className="absolute inset-x-0 bottom-0 h-32 sm:h-48 bg-gradient-to-t from-black via-black/60 to-transparent pointer-events-none" />
               </div>
 
-              {/* Play Button Center Overlay */}
-              <div className="absolute inset-0 z-10 flex items-center justify-center">
-                <div className="flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-full bg-[#FFBE32] text-black shadow-[0_0_35px_#FFBE32] group-hover:scale-110 transition-transform duration-300">
-                  <Play className="h-8 w-8 sm:h-10 sm:w-10 fill-current ml-1" />
+              {/* Top Row: Featured Premiere Badge & Duration */}
+              <div className="relative z-20 flex items-center justify-between w-full pointer-events-none">
+                <span className="px-2.5 sm:px-3 py-1 rounded bg-red-600/90 backdrop-blur-md text-[10px] sm:text-xs font-heading font-extrabold uppercase tracking-wider text-white flex items-center gap-1.5 shadow-md border border-red-500/30">
+                  <Flame className="h-3 w-3 sm:h-3.5 sm:w-3.5 fill-current" /> FEATURED PREMIERE
+                </span>
+                {featuredVideo.duration && (
+                  <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded bg-black/75 backdrop-blur-md border border-white/20 text-[10px] sm:text-xs font-mono text-gray-200">
+                    {featuredVideo.duration}
+                  </span>
+                )}
+              </div>
+
+              {/* Play Button Center Overlay - Responsively sized to prevent obstruction */}
+              <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+                <div className="flex h-12 w-12 xs:h-14 xs:w-14 sm:h-18 sm:w-18 md:h-20 md:w-20 items-center justify-center rounded-full bg-[#FFBE32] text-black shadow-[0_0_25px_rgba(255,190,50,0.5)] group-hover:scale-110 group-hover:shadow-[0_0_35px_rgba(255,190,50,0.8)] transition-all duration-300">
+                  <Play className="h-5 w-5 xs:h-6 xs:w-6 sm:h-8 sm:w-8 md:h-9 md:w-9 fill-current ml-0.5 sm:ml-1" />
                 </div>
               </div>
 
-              {/* Info overlay bottom */}
-              <div className="relative z-20 w-full max-w-2xl">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="px-3 py-1 rounded bg-red-600 text-[10px] font-heading font-bold uppercase tracking-wider text-white flex items-center gap-1.5">
-                    <Flame className="h-3 w-3" /> FEATURED PREMIERE
-                  </span>
-                  <span className="px-2.5 py-0.5 rounded bg-black/70 border border-white/20 text-[10px] font-mono text-gray-300">
-                    {featuredVideo.duration || "02:30"}
-                  </span>
-                </div>
-                <h3 className="font-display text-2xl sm:text-4xl lg:text-5xl uppercase tracking-wider text-white group-hover:text-[#FFBE32] transition-colors leading-tight">
+              {/* Bottom Info Overlay - Sized and clamped to prevent overlap with play button */}
+              <div className="relative z-20 w-full max-w-3xl mt-auto">
+                <h3 className="font-display text-base xs:text-lg sm:text-2xl md:text-3xl lg:text-4xl uppercase tracking-wider text-white group-hover:text-[#FFBE32] transition-colors leading-snug line-clamp-2 drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)]">
                   {featuredVideo.title}
                 </h3>
-                <div className="mt-2 flex items-center gap-3 text-xs font-mono text-gray-300">
+                <div className="mt-1.5 sm:mt-2.5 flex flex-wrap items-center gap-2 sm:gap-3 text-[10px] xs:text-[11px] sm:text-xs font-mono text-gray-300 drop-shadow">
                   <span>{featuredVideo.date}</span>
                   <span>•</span>
                   <span className="text-[#FFBE32] font-semibold">{featuredVideo.game}</span>
+                  {featuredVideo.views && (
+                    <>
+                      <span>•</span>
+                      <span>{featuredVideo.views}</span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

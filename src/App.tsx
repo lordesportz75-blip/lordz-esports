@@ -30,12 +30,12 @@ const NotFoundPage = lazy(() => import("./pages/NotFoundPage").then((m) => ({ de
  */
 function PublicLayout() {
   return (
-    <div className="min-h-screen bg-[#050505] text-white selection:bg-[#FFBE32] selection:text-black relative flex flex-col justify-between">
+    <div className="min-h-screen bg-[#050505] text-white selection:bg-[#FFBE32] selection:text-black relative flex flex-col justify-between w-full max-w-full overflow-x-clip">
       <ScrollToTop />
       <LoadingScreen />
       <CustomCursor />
       <Navbar />
-      <main className="flex-grow">
+      <main className="flex-grow w-full max-w-full min-w-0">
         <Suspense
           fallback={
             <div className="min-h-[60vh] flex items-center justify-center">

@@ -59,13 +59,13 @@ export const FooterSection = () => {
               <span className="block text-[10px] font-heading font-bold uppercase tracking-[0.2em] text-[#FFBE32] mb-3">
                 OFFICIAL CHANNELS
               </span>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 max-w-full">
                 <a
                   href="https://whatsapp.com/channel/0029Vb8sSc66hENsTW35hd11"
                   target="_blank"
                   rel="noopener noreferrer"
                   title="Official WhatsApp Channel"
-                  className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-[#25D366]/20 border border-white/10 hover:border-[#25D366]/50 text-gray-300 hover:text-[#25D366] text-[11px] font-heading font-semibold flex items-center gap-1.5 transition-all"
+                  className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-[#25D366]/20 border border-white/10 hover:border-[#25D366]/50 text-gray-300 hover:text-[#25D366] text-[11px] font-heading font-semibold inline-flex items-center gap-1.5 transition-all shrink-0"
                 >
                   <span>WhatsApp</span>
                 </a>
@@ -74,7 +74,7 @@ export const FooterSection = () => {
                   target="_blank"
                   rel="noopener noreferrer"
                   title="BR Scrims Channel"
-                  className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-[#FFBE32]/20 border border-white/10 hover:border-[#FFBE32]/50 text-gray-300 hover:text-[#FFBE32] text-[11px] font-heading font-semibold flex items-center gap-1.5 transition-all"
+                  className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-[#FFBE32]/20 border border-white/10 hover:border-[#FFBE32]/50 text-gray-300 hover:text-[#FFBE32] text-[11px] font-heading font-semibold inline-flex items-center gap-1.5 transition-all shrink-0"
                 >
                   <span>BR Scrims</span>
                 </a>
@@ -83,7 +83,7 @@ export const FooterSection = () => {
                   target="_blank"
                   rel="noopener noreferrer"
                   title="Discord Server"
-                  className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-[#5865F2]/20 border border-white/10 hover:border-[#5865F2]/50 text-gray-300 hover:text-[#5865F2] text-[11px] font-heading font-semibold flex items-center gap-1.5 transition-all"
+                  className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-[#5865F2]/20 border border-white/10 hover:border-[#5865F2]/50 text-gray-300 hover:text-[#5865F2] text-[11px] font-heading font-semibold inline-flex items-center gap-1.5 transition-all shrink-0"
                 >
                   <span>Discord</span>
                 </a>
@@ -92,7 +92,7 @@ export const FooterSection = () => {
                   target="_blank"
                   rel="noopener noreferrer"
                   title="Instagram @lord.esportz"
-                  className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-[#E1306C]/20 border border-white/10 hover:border-[#E1306C]/50 text-gray-300 hover:text-[#E1306C] text-[11px] font-heading font-semibold flex items-center gap-1.5 transition-all"
+                  className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-[#E1306C]/20 border border-white/10 hover:border-[#E1306C]/50 text-gray-300 hover:text-[#E1306C] text-[11px] font-heading font-semibold inline-flex items-center gap-1.5 transition-all shrink-0"
                 >
                   <span>Instagram</span>
                 </a>
@@ -101,7 +101,7 @@ export const FooterSection = () => {
                   target="_blank"
                   rel="noopener noreferrer"
                   title="YouTube @lord-esportz07"
-                  className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-[#FF0000]/20 border border-white/10 hover:border-[#FF0000]/50 text-gray-300 hover:text-[#FF0000] text-[11px] font-heading font-semibold flex items-center gap-1.5 transition-all"
+                  className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-[#FF0000]/20 border border-white/10 hover:border-[#FF0000]/50 text-gray-300 hover:text-[#FF0000] text-[11px] font-heading font-semibold inline-flex items-center gap-1.5 transition-all shrink-0"
                 >
                   <span>YouTube</span>
                 </a>
@@ -220,14 +220,14 @@ export const FooterSection = () => {
         </div>
 
         {/* Bottom Bar: Copyright & Legal */}
-        <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500 font-body">
-          <div className="flex items-center gap-2">
+        <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500 font-body text-center sm:text-left">
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
             <span>© 2026 LORD ESPORTZ. ALL RIGHTS RESERVED.</span>
-            <span>•</span>
+            <span className="hidden xs:inline">•</span>
             <span className="text-gray-400">MADE FOR INDIAN ESPORTS</span>
           </div>
 
-          <div className="flex items-center gap-6">
+          <div className="flex flex-wrap items-center justify-center sm:justify-end gap-3 sm:gap-6">
             <Link to="/about" className="hover:text-gray-300 transition-colors">
               Manifesto
             </Link>
@@ -240,7 +240,7 @@ export const FooterSection = () => {
             
             <button
               onClick={scrollToTop}
-              className="flex items-center gap-1 text-[#FFBE32] hover:text-[#FFCD59] transition-colors cursor-pointer ml-2"
+              className="flex items-center gap-1 text-[#FFBE32] hover:text-[#FFCD59] transition-colors cursor-pointer ml-1 sm:ml-2"
             >
               <span>TOP</span>
               <ArrowUp className="h-3.5 w-3.5" />

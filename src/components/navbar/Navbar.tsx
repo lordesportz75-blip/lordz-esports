@@ -4,7 +4,6 @@ import logoImg from "../../assets/lordz-logo.png";
 import { GoldButton } from "../common/GoldButton";
 import { OutlineButton } from "../common/OutlineButton";
 import {
-  Menu,
   ShieldCheck,
   ChevronDown,
   LogOut,
@@ -57,39 +56,39 @@ export const Navbar = () => {
   return (
     <>
       <header
-        className={`fixed top-0 left-0 right-0 z-[7000] transition-all duration-300 ${
+        className={`fixed top-0 left-0 right-0 w-full max-w-full z-[7000] h-16 sm:h-[68px] flex items-center transition-all duration-300 ${
           isScrolled
-            ? "bg-[#070708]/95 backdrop-blur-md border-b border-[#FFBE32]/25 py-2.5 shadow-[0_10px_30px_rgba(0,0,0,0.8)]"
-            : "bg-[#050505]/80 backdrop-blur-sm border-b border-white/5 py-3.5"
+            ? "bg-[#070708] border-b border-[#FFBE32]/25 shadow-[0_4px_30px_rgba(0,0,0,0.9)]"
+            : "bg-[#070708]/95 backdrop-blur-md border-b border-white/10 shadow-[0_2px_15px_rgba(0,0,0,0.6)]"
         }`}
       >
-        <div className="max-w-[1600px] mx-auto px-3 sm:px-5 lg:px-8 flex items-center justify-between gap-4">
+        <div className="w-full max-w-[1600px] mx-auto px-3.5 sm:px-6 lg:px-8 flex items-center justify-between gap-3 sm:gap-4">
           {/* Logo & Brand */}
           <Link
             to="/"
             className="flex items-center gap-2 sm:gap-3 group cursor-pointer focus:outline-none shrink-0"
           >
-            <div className="relative">
+            <div className="relative shrink-0">
               <img
                 src={logoImg}
                 alt="LORD ESPORTZ Official Crest Logo"
                 width={40}
                 height={40}
-                className="h-7 sm:h-10 w-auto object-contain transition-transform duration-300 group-hover:scale-105 drop-shadow-[0_0_12px_rgba(255,190,50,0.35)]"
+                className="h-8 sm:h-10 w-auto object-contain transition-transform duration-300 group-hover:scale-105 drop-shadow-[0_0_12px_rgba(255,190,50,0.35)]"
               />
             </div>
-            <div className="flex flex-col">
-              <span className="font-display text-base sm:text-xl xl:text-2xl leading-none uppercase tracking-widest text-white">
+            <div className="flex flex-col shrink-0">
+              <span className="font-display text-base sm:text-xl xl:text-2xl leading-none uppercase tracking-widest text-white whitespace-nowrap">
                 LORD <span className="text-[#FFBE32]">ESPORTZ</span>
               </span>
-              <span className="font-heading text-[7.5px] sm:text-[9px] tracking-[0.25em] text-[#9CA3AF] uppercase">
+              <span className="font-heading text-[7.5px] sm:text-[9px] tracking-[0.25em] text-[#9CA3AF] uppercase whitespace-nowrap">
                 India's Elite Clan
               </span>
             </div>
           </Link>
 
-          {/* Desktop Navigation Links — Straight Row Layout (No dropdown) */}
-          <nav className="hidden lg:flex items-center gap-2.5 xl:gap-4 2xl:gap-5 text-[11px] xl:text-xs font-heading font-bold uppercase tracking-wider text-gray-300">
+          {/* Desktop Navigation Links — Straight Row Layout for xl+ screens */}
+          <nav className="hidden xl:flex items-center gap-3 2xl:gap-5 text-[11px] 2xl:text-xs font-heading font-bold uppercase tracking-wider text-gray-300">
             {straightNavItems.map((item) => {
               const isActive =
                 item.path === "/about"
@@ -112,9 +111,9 @@ export const Navbar = () => {
           </nav>
 
           {/* Right Action CTAs */}
-          <div className="hidden sm:flex items-center gap-3 shrink-0">
+          <div className="hidden sm:flex items-center gap-2.5 sm:gap-3 shrink-0">
             {isAuthenticated && user ? (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5 sm:gap-3">
                 {/* Real-Time Notification Bell */}
                 <NotificationCenter />
 
@@ -263,13 +262,17 @@ export const Navbar = () => {
             </GoldButton>
           </div>
 
-          {/* Mobile Hamburger Toggle */}
+          {/* Mobile / Tablet Hamburger Toggle - Precision 3-bar layout */}
           <button
             onClick={() => setMobileMenuOpen(true)}
             aria-label="Open navigation menu"
-            className="lg:hidden p-1.5 sm:p-2 text-white hover:text-[#FFBE32] transition-colors focus:outline-none cursor-pointer"
+            className="xl:hidden shrink-0 flex items-center justify-center p-2 rounded-xl text-white hover:text-[#FFBE32] hover:bg-white/5 active:bg-white/10 transition-colors focus:outline-none cursor-pointer"
           >
-            <Menu className="h-5 w-5 sm:h-6 sm:w-6" />
+            <div className="w-5.5 sm:w-6 h-4 sm:h-[18px] flex flex-col justify-between items-center shrink-0" aria-hidden="true">
+              <span className="w-full h-[2px] bg-current rounded-full transition-transform" />
+              <span className="w-full h-[2px] bg-current rounded-full transition-transform" />
+              <span className="w-full h-[2px] bg-current rounded-full transition-transform" />
+            </div>
           </button>
         </div>
       </header>

@@ -18,7 +18,7 @@ export const PageHero = ({
   children,
 }: PageHeroProps) => {
   return (
-    <section className="relative pt-32 pb-14 sm:pt-36 sm:pb-16 px-4 sm:px-6 lg:px-8 bg-[#050505] overflow-hidden border-b border-white/5">
+    <section className="relative pt-20 pb-8 sm:pt-32 sm:pb-14 md:pt-36 md:pb-16 px-4 sm:px-6 lg:px-8 bg-[#050505] overflow-hidden border-b border-white/5">
       {/* Background Architectural Gopuram Grid */}
       <div className="absolute inset-0 bg-esports-grid opacity-25 pointer-events-none" />
       <TemplePattern className="opacity-[0.04] scale-125 -translate-y-12" />
@@ -32,7 +32,7 @@ export const PageHero = ({
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[#FFBE32]/35 bg-[#FFBE32]/10 backdrop-blur-md mb-4"
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[#FFBE32]/35 bg-[#FFBE32]/10 backdrop-blur-md mb-3 sm:mb-4"
         >
           <span className="h-1.5 w-1.5 rounded-full bg-[#FFBE32] animate-pulse" />
           <span className="font-heading text-xs font-bold uppercase tracking-[0.25em] text-[#FFBE32]">
@@ -45,7 +45,7 @@ export const PageHero = ({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-          className="font-display text-4xl sm:text-5xl md:text-6xl uppercase tracking-tight text-white font-extrabold"
+          className="font-display text-2xl xs:text-3xl sm:text-5xl md:text-6xl uppercase tracking-tight text-white font-extrabold"
         >
           {title}{" "}
           {titleHighlight && (
@@ -58,7 +58,7 @@ export const PageHero = ({
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="mt-4 text-sm sm:text-base md:text-lg text-[#9CA3AF] font-body max-w-2xl mx-auto leading-relaxed"
+          className="mt-2.5 sm:mt-4 text-xs xs:text-sm sm:text-base md:text-lg text-[#9CA3AF] font-body max-w-2xl mx-auto leading-relaxed"
         >
           {subtitle}
         </motion.p>
