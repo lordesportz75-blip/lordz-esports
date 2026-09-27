@@ -467,7 +467,11 @@ export const getTournaments = async (req: Request, res: Response, next: NextFunc
 
     if (dbConnected) {
       try {
-        const where: any = {};
+        const where: any = {
+          // Always exclude DRAFT/unpublished tournaments from public listing
+          isDraft: false,
+          isPublished: true,
+        };
         if (status && status !== "ALL") {
           const s = String(status).toUpperCase();
           if (s === "UPCOMING") {
@@ -476,9 +480,13 @@ export const getTournaments = async (req: Request, res: Response, next: NextFunc
             where.status = { in: ["LIVE", "ONGOING"] };
           } else if (s === "COMPLETED") {
             where.status = { in: ["COMPLETED", "ARCHIVED"] };
-          } else {
+          } else if (s !== "DRAFT") {
+            // Never expose DRAFT via public API even if explicitly requested
             where.status = s;
           }
+        } else {
+          // Default: exclude DRAFT status
+          where.status = { not: "DRAFT" };
         }
         if (gameCategory && gameCategory !== "ALL") where.gameCategory = String(gameCategory);
         if (featured !== undefined) where.featured = featured === "true";
@@ -547,8 +555,8 @@ export const getTournaments = async (req: Request, res: Response, next: NextFunc
       }
     }
 
-    // In-memory fallback
-    let result = [...memoryTournaments];
+    // In-memory fallback — always exclude DRAFT/unpublished from public listing
+    let result = [...memoryTournaments].filter((t) => !t.isDraft && t.isPublished !== false && t.status !== "DRAFT");
     if (status && status !== "ALL") {
       const s = String(status).toUpperCase();
       if (s === "UPCOMING") {
@@ -557,7 +565,7 @@ export const getTournaments = async (req: Request, res: Response, next: NextFunc
         result = result.filter((t) => ["LIVE", "ONGOING"].includes(t.status));
       } else if (s === "COMPLETED") {
         result = result.filter((t) => ["COMPLETED", "ARCHIVED"].includes(t.status));
-      } else {
+      } else if (s !== "DRAFT") {
         result = result.filter((t) => t.status === s);
       }
     }

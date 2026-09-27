@@ -87,6 +87,10 @@ export const TournamentsSection = ({
 
   const filteredTournaments = useMemo(() => {
     return tournaments.filter((t) => {
+      // Safety guard: filter out any DRAFT/unpublished tournaments
+      if ((t as any).isDraft || (t as any).isPublished === false || t.status === "DRAFT") {
+        return false;
+      }
       // Completed, Archived, and Cancelled tournaments are automatically removed from the main website
       if (t.status === "COMPLETED" || t.status === "ARCHIVED" || t.status === "CANCELLED") {
         return false;
