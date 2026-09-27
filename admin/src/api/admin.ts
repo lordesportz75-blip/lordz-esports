@@ -19,6 +19,13 @@ export interface DashboardMetrics {
   recentRegistrations: any[];
   recentOrders: any[];
   recentAuditLogs: any[];
+  gameDistribution?: Array<{ game: string; count: number; percentage: number }>;
+  productSales?: Array<{ name: string; revenue: number; count: number; percentage: number }>;
+  systemHealth?: {
+    latencyMs: number;
+    dbStatus: string;
+    uptime: string;
+  };
 }
 
 export interface AdminUserItem {
