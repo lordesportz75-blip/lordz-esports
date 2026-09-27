@@ -148,61 +148,55 @@ export const BrandPartnersPage = () => {
     partnersApi
       .getAll()
       .then((res) => {
-        if (res && res.length > 0) {
-          setDbPartners(res);
+        if (Array.isArray(res)) {
+          setDbPartners(res.filter((p) => p.isActive !== false));
+        } else {
+          setDbPartners([]);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        setDbPartners([]);
+      });
   }, []);
 
-  // Merge DB partners, allowing custom uploaded logos and new partners to reflect immediately
-  const mergedPartners: PartnerRowData[] = [
-    ...curatedPartners.map((cp) => {
-      const dbMatch = dbPartners.find(
-        (p) => p.id === cp.id || p.name.toLowerCase() === cp.name.toLowerCase()
+  // Display ONLY active partners returned from the database
+  const mergedPartners: PartnerRowData[] = dbPartners
+    .filter((p) => p.isActive !== false)
+    .map((p) => {
+      const hasExternalLogo =
+        p.logoImage &&
+        (p.logoImage.startsWith("http") || p.logoImage.startsWith("data:"));
+      const knownFallback =
+        getKnownPartnerLogo(p.name) || getKnownPartnerLogo(p.id);
+      const resolvedLogo =
+        (hasExternalLogo && p.logoImage
+          ? p.logoImage
+          : knownFallback || p.logoImage || p.cardImage || logoInfinix) ||
+        logoInfinix;
+
+      const curatedMatch = curatedPartners.find(
+        (cp) => cp.id === p.id || cp.name.toLowerCase() === p.name.toLowerCase()
       );
-      if (dbMatch) {
-        const hasExternalLogo = dbMatch.logoImage && (dbMatch.logoImage.startsWith("http") || dbMatch.logoImage.startsWith("data:"));
-        return {
-          ...cp,
-          logo: (hasExternalLogo && dbMatch.logoImage ? dbMatch.logoImage : cp.logo) || cp.logo,
-          name: dbMatch.name || cp.name,
-          category: dbMatch.category || cp.category,
-          tier: dbMatch.tier || cp.tier,
-          website: dbMatch.websiteUrl || cp.website,
-        };
-      }
-      return cp;
-    }),
-    ...dbPartners
-      .filter(
-        (p) =>
-          !curatedPartners.some(
-            (cp) => cp.id === p.id || cp.name.toLowerCase() === p.name.toLowerCase()
-          ) && p.isActive !== false
-      )
-      .map((p) => {
-        const hasExternalLogo = p.logoImage && (p.logoImage.startsWith("http") || p.logoImage.startsWith("data:"));
-        const knownFallback = getKnownPartnerLogo(p.name) || getKnownPartnerLogo(p.id);
-        const resolvedLogo = (hasExternalLogo && p.logoImage ? p.logoImage : (knownFallback || p.logoImage || p.cardImage || logoInfinix)) || logoInfinix;
-        return {
-          id: p.id,
-          name: p.name,
-          tier: p.tier || "OFFICIAL PARTNER",
-          category: p.category || "Esports Partner",
-          logo: resolvedLogo,
-          website: p.websiteUrl || "https://lordz.gg",
-          description: `Official brand partner collaborating with LORD ESPORTZ to advance competitive gaming excellence and fan engagement across India.`,
-          highlights: [
-            "Official Partner Collaboration",
-            "Brand Integration in Tournaments",
-            "Direct Community Reach",
-            "Active 2026 Season"
-          ],
-          since: "2026"
-        };
-      })
-  ];
+
+      return {
+        id: p.id,
+        name: p.name,
+        tier: p.tier || curatedMatch?.tier || "OFFICIAL PARTNER",
+        category: p.category || curatedMatch?.category || "Esports Partner",
+        logo: resolvedLogo,
+        website: p.websiteUrl || curatedMatch?.website || "https://lordesportz.com",
+        description:
+          curatedMatch?.description ||
+          `Official brand partner collaborating with LORD ESPORTZ to advance competitive gaming excellence and fan engagement across India.`,
+        highlights: curatedMatch?.highlights || [
+          "Official Partner Collaboration",
+          "Brand Integration in Tournaments",
+          "Direct Community Reach",
+          "Active 2026 Season",
+        ],
+        since: curatedMatch?.since || "2026",
+      };
+    });
 
   const categories = [
     "ALL",
@@ -425,6 +419,20 @@ export const BrandPartnersPage = () => {
               </motion.div>
             );
           })}
+
+          {filteredPartners.length === 0 && (
+            <div className="py-20 text-center rounded-2xl bg-[#0C0C11] border border-white/5">
+              <Handshake className="h-12 w-12 text-[#FFBE32]/40 mx-auto mb-4" />
+              <h3 className="font-display text-xl uppercase tracking-wider text-white">
+                No Partners Found
+              </h3>
+              <p className="text-gray-400 font-body text-sm mt-2 max-w-md mx-auto">
+                {searchQuery || selectedCategory !== "ALL"
+                  ? "No partners match your current filter criteria."
+                  : "New official brand alliances and tournament partners will be announced soon."}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Bottom Banner: Become a Partner CTA */}

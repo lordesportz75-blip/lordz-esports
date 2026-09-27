@@ -2,8 +2,11 @@ import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
 
-console.log("🎨 Ensuring Brand Favicons are generated...");
-execSync("node scripts/generate-favicons.cjs", { stdio: "inherit" });
+try {
+  execSync("node scripts/generate-favicons.cjs", { stdio: "inherit" });
+} catch {
+  console.log("ℹ️ Favicon generation skipped (favicons already exist)");
+}
 
 console.log("🚀 Building Lord Esports Main Website...");
 execSync("npm run build:web", { stdio: "inherit" });

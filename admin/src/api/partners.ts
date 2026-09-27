@@ -1,4 +1,4 @@
-import { apiRequest } from "./client";
+import { apiRequest, clearClientCache } from "./client";
 
 export interface PartnerItem {
   id: string;
@@ -54,14 +54,7 @@ export interface PartnerInquiryItem {
   updatedAt?: string;
 }
 
-export const fallbackPartners: PartnerItem[] = [
-  { id: "esports-pro", name: "ESPORTS PRO", tier: "MAIN SPONSOR", category: "Platform", logoImage: "/uploads/partner-esportspro.png", sortOrder: 1, isActive: true },
-  { id: "espotz-live", name: "ESPOTZ LIVE", tier: "BROADCAST PARTNER", category: "Broadcast", logoImage: "/uploads/partner-espotz.png", sortOrder: 2, isActive: true },
-  { id: "infinix", name: "INFINIX", tier: "MAIN SPONSOR", category: "Smartphone", logoImage: "/uploads/partner-infinix.png", sortOrder: 3, isActive: true },
-  { id: "free-fire-max", name: "FREE FIRE MAX", tier: "OFFICIAL PARTNER", category: "Game", logoImage: "/uploads/partner-freefire.png", sortOrder: 4, isActive: true },
-  { id: "fusion-crystals", name: "FUSION CRYSTALS", tier: "OFFICIAL PARTNER", category: "Energy", logoImage: "/uploads/partner-fusion.png", sortOrder: 5, isActive: true },
-  { id: "esports-world-cup", name: "ESPORTS WORLD CUP", tier: "OFFICIAL PARTNER", category: "Circuit", logoImage: "/uploads/partner-ewc.png", sortOrder: 6, isActive: true },
-];
+export const fallbackPartners: PartnerItem[] = [];
 
 export const fallbackPlansAdmin: PartnerPlanItem[] = [
   {
@@ -177,31 +170,37 @@ export const fallbackPlansAdmin: PartnerPlanItem[] = [
 
 export const partnersApi = {
   getAll: async (): Promise<PartnerItem[]> => {
-    return apiRequest<PartnerItem[]>("/partners", { method: "GET" }, fallbackPartners);
+    return apiRequest<PartnerItem[]>("/partners", { method: "GET" }, []);
   },
 
   getAllAdmin: async (): Promise<PartnerItem[]> => {
-    return apiRequest<PartnerItem[]>("/partners/admin/all", { method: "GET" }, fallbackPartners);
+    return apiRequest<PartnerItem[]>("/partners/admin/all", { method: "GET" }, []);
   },
 
   create: async (data: Partial<PartnerItem>): Promise<PartnerItem> => {
-    return apiRequest<PartnerItem>("/partners", {
+    const res = await apiRequest<PartnerItem>("/partners", {
       method: "POST",
       body: JSON.stringify(data),
     });
+    clearClientCache("partners");
+    return res;
   },
 
   update: async (id: string, data: Partial<PartnerItem>): Promise<PartnerItem> => {
-    return apiRequest<PartnerItem>(`/partners/${id}`, {
+    const res = await apiRequest<PartnerItem>(`/partners/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
     });
+    clearClientCache("partners");
+    return res;
   },
 
   delete: async (id: string): Promise<{ success: boolean }> => {
-    return apiRequest<{ success: boolean }>(`/partners/${id}`, {
+    const res = await apiRequest<{ success: boolean }>(`/partners/${id}`, {
       method: "DELETE",
     });
+    clearClientCache("partners");
+    return res;
   },
 };
 

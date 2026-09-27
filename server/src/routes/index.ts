@@ -465,7 +465,7 @@ router.delete(
 );
 
 // ================= PARTNERS ROUTES =================
-router.get("/partners", cacheMiddleware(300), partnerCtrl.getPartners);
+router.get("/partners", partnerCtrl.getPartners);
 router.get(
   "/partners/admin/all",
   authenticate,

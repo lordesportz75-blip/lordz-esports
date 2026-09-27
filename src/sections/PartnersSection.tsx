@@ -15,13 +15,6 @@ import logoCleanFreeFireMax from "../assets/logo-freefire-clean.svg";
 import logoCleanFusionCrystals from "../assets/logo-fusion-clean.svg";
 import logoCleanEsportsWorldCup from "../assets/logo-ewc-clean.svg";
 
-import cardEsportsPro from "../assets/card_esports_pro.png";
-import cardEspotzLive from "../assets/card_espotz_live.png";
-import cardInfinix from "../assets/card_infinix.png";
-import cardFreeFireMax from "../assets/card_free_fire_max.png";
-import cardFusionCrystals from "../assets/card_fusion_crystals.png";
-import cardEsportsWorldCup from "../assets/card_esports_world_cup.png";
-
 import { getApiUrl } from "../api/client";
 
 export interface PartnerItem {
@@ -82,65 +75,9 @@ export const getKnownPartnerLogo = (nameOrId: string = ""): string | null => {
   return null;
 };
 
-const defaultFallbackCards: Record<string, string> = {
-  "esports-pro": cardEsportsPro,
-  "espotz-live": cardEspotzLive,
-  "infinix": cardInfinix,
-  "free-fire-max": cardFreeFireMax,
-  "fusion-crystals": cardFusionCrystals,
-  "esports-world-cup": cardEsportsWorldCup,
-};
 
-export const defaultPartners: PartnerItem[] = [
-  {
-    id: "esports-pro",
-    name: "ESPORTS PRO",
-    category: "Tournament Platform",
-    logoImage: logoCleanEsportsPro,
-    cardImage: cardEsportsPro,
-    websiteUrl: "https://esportspro.gg",
-  },
-  {
-    id: "espotz-live",
-    name: "ESPOTZ LIVE",
-    category: "Livestream Production",
-    logoImage: logoCleanEspotzLive,
-    cardImage: cardEspotzLive,
-    websiteUrl: "https://espotz.live",
-  },
-  {
-    id: "infinix",
-    name: "INFINIX",
-    category: "Official Gaming Smartphone",
-    logoImage: logoCleanInfinix,
-    cardImage: cardInfinix,
-    websiteUrl: "https://infinixmobility.com",
-  },
-  {
-    id: "free-fire-max",
-    name: "FREE FIRE MAX",
-    category: "Official Battle Royale Title",
-    logoImage: logoCleanFreeFireMax,
-    cardImage: cardFreeFireMax,
-    websiteUrl: "https://ff.garena.com",
-  },
-  {
-    id: "fusion-crystals",
-    name: "FUSION CRYSTALS",
-    category: "Energy & Performance",
-    logoImage: logoCleanFusionCrystals,
-    cardImage: cardFusionCrystals,
-    websiteUrl: "https://fusioncrystals.gg",
-  },
-  {
-    id: "esports-world-cup",
-    name: "ESPORTS WORLD CUP",
-    category: "Global Competitive Circuit",
-    logoImage: logoCleanEsportsWorldCup,
-    cardImage: cardEsportsWorldCup,
-    websiteUrl: "https://esportsworldcup.com",
-  },
-];
+
+export const defaultPartners: PartnerItem[] = [];
 
 interface PartnersSectionProps {
   onPartnerWithUs: () => void;
@@ -153,35 +90,37 @@ export const PartnersSection = ({
   showHeader = true,
   partners: initialPartners,
 }: PartnersSectionProps) => {
-  const [partnerList, setPartnerList] = useState<PartnerItem[]>(initialPartners || defaultPartners);
+  const [partnerList, setPartnerList] = useState<PartnerItem[]>(initialPartners || []);
+  const [loading, setLoading] = useState(!initialPartners);
 
   useEffect(() => {
     if (!initialPartners) {
+      setLoading(true);
       partnersApi
         .getAll()
         .then((data) => {
-          if (data && data.length > 0) {
-            // Map live items, prioritizing uploaded logos over static fallbacks
-            const merged = data.map((d) => ({
-              ...d,
-              logoImage: d.logoImage || defaultFallbackLogos[d.id] || null,
-              cardImage: d.cardImage || defaultFallbackCards[d.id] || null,
-            }));
-            setPartnerList(merged);
+          if (Array.isArray(data)) {
+            const activeOnly = data.filter((d) => d.isActive !== false);
+            setPartnerList(activeOnly);
+          } else {
+            setPartnerList([]);
           }
         })
         .catch(() => {
-          setPartnerList(defaultPartners);
+          setPartnerList([]);
+        })
+        .finally(() => {
+          setLoading(false);
         });
+    } else {
+      setPartnerList(initialPartners);
+      setLoading(false);
     }
   }, [initialPartners]);
 
-  // Resolve logo helper - prioritizes instant bundled vector assets for core partners and validates URLs
+  // Resolve logo helper - prioritizes custom uploaded/Cloudinary URLs and validates URLs
   const resolveLogo = (partner: PartnerItem): string | null => {
-    // 1. If it's a known brand, its bundled SVG is already present in-app (0ms instant load, vector crispness)
-    const known = getKnownPartnerLogo(partner.name) || getKnownPartnerLogo(partner.id);
-
-    // 2. If it's an external CDN or Cloudinary URL (like Red Bull), prioritize it
+    // 1. If it's an external CDN or Cloudinary URL (e.g. Cloudinary upload), prioritize it
     if (
       partner.logoImage &&
       (partner.logoImage.startsWith("http://") ||
@@ -191,14 +130,15 @@ export const PartnersSection = ({
       return partner.logoImage;
     }
 
-    // 3. If we have a bundled vector asset for this brand, use it directly (super fast, 0ms, zero network failure)
-    if (known) {
-      return known;
-    }
-
-    // 4. If an uploaded relative path exists, resolve it via getApiUrl or direct public path
+    // 2. If it's an uploaded relative path exists, resolve it via getApiUrl
     if (partner.logoImage) {
       return getApiUrl(partner.logoImage);
+    }
+
+    // 3. If it's a known brand, its bundled SVG is already present in-app
+    const known = getKnownPartnerLogo(partner.name) || getKnownPartnerLogo(partner.id);
+    if (known) {
+      return known;
     }
 
     return defaultFallbackLogos[partner.id] || null;
@@ -217,7 +157,8 @@ export const PartnersSection = ({
   }, [partnerList]);
 
   // Duplicate partner list for seamless infinite loop marquee
-  const marqueeList = [...partnerList, ...partnerList];
+  const repeatCount = partnerList.length > 0 ? Math.max(2, Math.ceil(12 / partnerList.length)) : 0;
+  const marqueeList = Array.from({ length: repeatCount }, () => partnerList).flat();
 
   return (
     <section
@@ -298,44 +239,60 @@ export const PartnersSection = ({
             <div className="absolute inset-y-0 left-0 w-16 sm:w-44 bg-gradient-to-r from-[#050505] via-[#050505]/90 to-transparent z-10 pointer-events-none" />
             <div className="absolute inset-y-0 right-0 w-16 sm:w-44 bg-gradient-to-l from-[#050505] via-[#050505]/90 to-transparent z-10 pointer-events-none" />
 
-            <div className="animate-marquee-smooth flex items-center gap-6 sm:gap-14">
-              {marqueeList.map((partner, idx) => {
-                const logo = resolveLogo(partner);
+            {loading ? (
+              <div className="py-12 flex justify-center items-center">
+                <div className="h-6 w-6 border-2 border-[#FFBE32] border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : partnerList.length === 0 ? (
+              <div className="py-12 text-center">
+                <Handshake className="h-10 w-10 text-[#FFBE32]/40 mx-auto mb-3" />
+                <p className="text-gray-400 font-heading text-sm uppercase tracking-wider">
+                  Partner announcements coming soon
+                </p>
+                <p className="text-gray-600 text-xs mt-1">
+                  Collaborating with global gaming brands and industry leaders.
+                </p>
+              </div>
+            ) : (
+              <div className="animate-marquee-smooth flex items-center gap-6 sm:gap-14">
+                {marqueeList.map((partner, idx) => {
+                  const logo = resolveLogo(partner);
 
-                return (
-                  <div
-                    key={`${partner.id}-mq1-${idx}`}
-                    onClick={() => partner.websiteUrl && window.open(partner.websiteUrl, "_blank")}
-                    title={partner.name}
-                    className="relative group shrink-0 h-16 sm:h-24 w-36 sm:w-56 flex items-center justify-center cursor-pointer px-3 sm:px-4 transition-transform duration-300 hover:scale-110"
-                  >
-                    {/* Brand Logo Only - Pure Floating Transparent Logo */}
-                    {logo ? (
-                      <img
-                        src={logo}
-                        alt={`${partner.name} - Official Partner of LORD ESPORTZ`}
-                        loading="eager"
-                        decoding="async"
-                        onError={(e) => {
-                          const fallback =
-                            getKnownPartnerLogo(partner.name) ||
-                            getKnownPartnerLogo(partner.id) ||
-                            defaultFallbackLogos[partner.id];
-                          if (fallback && e.currentTarget.src !== fallback) {
-                            e.currentTarget.src = fallback;
-                          }
-                        }}
-                        className="max-h-11 sm:max-h-16 max-w-full object-contain filter opacity-85 group-hover:opacity-100 group-hover:drop-shadow-[0_0_20px_rgba(255,190,50,0.45)] transition-all duration-300"
-                      />
-                    ) : (
-                      <span className="font-heading text-sm sm:text-base font-bold text-white/80 group-hover:text-white tracking-wider text-center transition-colors">
-                        {partner.name}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                  return (
+                    <div
+                      key={`${partner.id}-mq1-${idx}`}
+                      onClick={() => partner.websiteUrl && window.open(partner.websiteUrl, "_blank")}
+                      title={partner.name}
+                      className="relative group shrink-0 h-16 sm:h-24 w-36 sm:w-56 flex items-center justify-center cursor-pointer px-3 sm:px-4 transition-transform duration-300 hover:scale-110"
+                    >
+                      {/* Brand Logo Only - Pure Floating Transparent Logo */}
+                      {logo ? (
+                        <img
+                          src={logo}
+                          alt={`${partner.name} - Official Partner of LORD ESPORTZ`}
+                          loading="eager"
+                          decoding="async"
+                          onError={(e) => {
+                            const fallback =
+                              getKnownPartnerLogo(partner.name) ||
+                              getKnownPartnerLogo(partner.id) ||
+                              defaultFallbackLogos[partner.id];
+                            if (fallback && e.currentTarget.src !== fallback) {
+                              e.currentTarget.src = fallback;
+                            }
+                          }}
+                          className="max-h-11 sm:max-h-16 max-w-full object-contain filter opacity-85 group-hover:opacity-100 group-hover:drop-shadow-[0_0_20px_rgba(255,190,50,0.45)] transition-all duration-300"
+                        />
+                      ) : (
+                        <span className="font-heading text-sm sm:text-base font-bold text-white/80 group-hover:text-white tracking-wider text-center transition-colors">
+                          {partner.name}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 

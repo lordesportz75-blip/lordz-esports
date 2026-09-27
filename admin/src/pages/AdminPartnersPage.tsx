@@ -6,7 +6,6 @@ import {
   type PartnerItem,
   type PartnerPlanItem,
   type PartnerInquiryItem,
-  fallbackPartners,
   fallbackPlansAdmin
 } from "../api/partners";
 import { adminApi } from "../api/admin";
@@ -110,13 +109,13 @@ export const AdminPartnersPage: React.FC = () => {
     setPartnersLoading(true);
     try {
       const data = await partnersApi.getAllAdmin();
-      setPartners(data && data.length > 0 ? data : fallbackPartners);
+      setPartners(Array.isArray(data) ? data : []);
     } catch {
       try {
         const publicData = await partnersApi.getAll();
-        setPartners(publicData && publicData.length > 0 ? publicData : fallbackPartners);
+        setPartners(Array.isArray(publicData) ? publicData : []);
       } catch {
-        setPartners(fallbackPartners);
+        setPartners([]);
       }
     } finally {
       setPartnersLoading(false);
@@ -305,14 +304,11 @@ export const AdminPartnersPage: React.FC = () => {
       };
 
       if (editingPartner) {
-        const updated = await partnersApi.update(editingPartner.id, payload);
-        setPartners((prev) =>
-          prev.map((p) => (p.id === editingPartner.id ? { ...p, ...payload, ...updated } : p))
-        );
+        await partnersApi.update(editingPartner.id, payload);
       } else {
-        const created = await partnersApi.create(payload);
-        setPartners((prev) => [...prev, created]);
+        await partnersApi.create(payload);
       }
+      await loadPartners();
       setPartnerModalOpen(false);
     } catch (err: any) {
       alert(err.message || "Failed to save partner");
@@ -325,13 +321,9 @@ export const AdminPartnersPage: React.FC = () => {
     const nextState = !part.isActive;
     try {
       await partnersApi.update(part.id, { isActive: nextState });
-      setPartners((prev) =>
-        prev.map((p) => (p.id === part.id ? { ...p, isActive: nextState } : p))
-      );
+      await loadPartners();
     } catch {
-      setPartners((prev) =>
-        prev.map((p) => (p.id === part.id ? { ...p, isActive: nextState } : p))
-      );
+      await loadPartners();
     }
   };
 
@@ -340,6 +332,7 @@ export const AdminPartnersPage: React.FC = () => {
     try {
       await partnersApi.delete(id);
       setPartners((prev) => prev.filter((p) => p.id !== id));
+      await loadPartners();
     } catch (err: any) {
       alert(err.message || "Failed to delete partner");
     }

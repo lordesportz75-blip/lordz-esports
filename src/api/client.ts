@@ -118,7 +118,22 @@ export async function apiRequest<T = any>(
 
   const url = getApiUrl(endpoint);
   const isTournamentsEndpoint = url.includes("/tournaments");
-  const isCacheableGet = method === "GET" && !token && !isTournamentsEndpoint;
+  const isPartnersEndpoint = url.includes("/partners");
+
+  // Always purge any legacy stale partners cache in localStorage
+  if (isPartnersEndpoint && typeof localStorage !== "undefined") {
+    try {
+      localStorage.removeItem(`lordz_swr_${url}`);
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.includes("partners")) {
+          localStorage.removeItem(k);
+        }
+      }
+    } catch {}
+  }
+
+  const isCacheableGet = method === "GET" && !token && !isTournamentsEndpoint && !isPartnersEndpoint;
   const effectiveTtl = CLIENT_CACHE_TTL;
 
   // 1. Check in-memory cache first (0ms)

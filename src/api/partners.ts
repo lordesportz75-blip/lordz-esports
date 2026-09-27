@@ -1,48 +1,48 @@
-import { apiRequest } from "./client";
+import { apiRequest, clearClientCache } from "./client";
 
 export interface PartnerItem {
   id: string;
   name: string;
   category?: string;
   tier?: string;
-  logoImage?: string;
-  cardImage?: string;
-  websiteUrl?: string;
+  logoImage?: string | null;
+  cardImage?: string | null;
+  websiteUrl?: string | null;
+  sortOrder?: number;
   isActive?: boolean;
 }
 
-export const fallbackPartners: PartnerItem[] = [
-  { id: "esports-pro", name: "ESPORTS PRO", tier: "MAIN SPONSOR", category: "Platform" },
-  { id: "espotz-live", name: "ESPOTZ LIVE", tier: "BROADCAST PARTNER", category: "Broadcast" },
-  { id: "infinix", name: "INFINIX", tier: "MAIN SPONSOR", category: "Smartphone" },
-  { id: "free-fire-max", name: "FREE FIRE MAX", tier: "OFFICIAL PARTNER", category: "Game" },
-  { id: "fusion-crystals", name: "FUSION CRYSTALS", tier: "OFFICIAL PARTNER", category: "Energy" },
-  { id: "esports-world-cup", name: "ESPORTS WORLD CUP", tier: "OFFICIAL PARTNER", category: "Circuit" },
-];
+export const fallbackPartners: PartnerItem[] = [];
 
 export const partnersApi = {
   getAll: async (): Promise<PartnerItem[]> => {
-    return apiRequest<PartnerItem[]>("/partners", { method: "GET" }, fallbackPartners);
+    return apiRequest<PartnerItem[]>("/partners", { method: "GET" }, []);
   },
 
   create: async (data: Partial<PartnerItem>): Promise<PartnerItem> => {
-    return apiRequest<PartnerItem>("/partners", {
+    const res = await apiRequest<PartnerItem>("/partners", {
       method: "POST",
       body: JSON.stringify(data),
     });
+    clearClientCache("partners");
+    return res;
   },
 
   update: async (id: string, data: Partial<PartnerItem>): Promise<PartnerItem> => {
-    return apiRequest<PartnerItem>(`/partners/${id}`, {
+    const res = await apiRequest<PartnerItem>(`/partners/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
     });
+    clearClientCache("partners");
+    return res;
   },
 
   delete: async (id: string): Promise<{ success: boolean }> => {
-    return apiRequest<{ success: boolean }>(`/partners/${id}`, {
+    const res = await apiRequest<{ success: boolean }>(`/partners/${id}`, {
       method: "DELETE",
     });
+    clearClientCache("partners");
+    return res;
   },
 };
 
