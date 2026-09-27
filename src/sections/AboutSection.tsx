@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { TemplePattern } from "../components/common/TemplePattern";
 import logoImg from "../assets/lordz-logo.png";
@@ -13,6 +13,8 @@ import {
   Zap,
   Crosshair,
   Target,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { playersData } from "../data/players";
@@ -74,6 +76,32 @@ export const AboutSection = ({
   defaultTab = "manifesto",
 }: AboutSectionProps) => {
   const [activeTab, setActiveTab] = useState<"manifesto" | "players" | "teams">(defaultTab);
+  const teamSliderRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+
+  const checkScroll = () => {
+    if (teamSliderRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = teamSliderRef.current;
+      setCanScrollLeft(scrollLeft > 15);
+      setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 15);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "teams") {
+      const timer = setTimeout(checkScroll, 120);
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab]);
+
+  const scrollTeam = (direction: "left" | "right") => {
+    if (teamSliderRef.current) {
+      const scrollAmount = direction === "left" ? -330 : 330;
+      teamSliderRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
+      setTimeout(checkScroll, 350);
+    }
+  };
 
   const manifesto = [
     { text: "WE DON'T JUST PLAY.", gold: false },
@@ -402,95 +430,175 @@ export const AboutSection = ({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
               transition={{ duration: 0.3 }}
-              className="space-y-8"
+              className="space-y-6"
             >
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                {collectiveMembers.slice(0, 4).map((member) => (
-                  <div
-                    key={member.id}
-                    className="group relative rounded-2xl bg-gradient-to-b from-[#141418] via-[#0C0C0E] to-[#070709] border border-white/10 hover:border-[#FFBE32]/70 p-4 shadow-[0_15px_40px_rgba(0,0,0,0.8)] hover:shadow-[0_20px_45px_rgba(255,190,50,0.2)] transition-all flex flex-col justify-between overflow-hidden"
+              {/* Slider Header Controls */}
+              <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-mono text-gray-300">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#FFBE32] animate-pulse" />
+                    ALL MEMBERS ({collectiveMembers.length})
+                  </span>
+                  <span className="hidden sm:inline-block text-[11px] text-gray-500 font-mono">
+                    SLIDE TO VIEW FULL COLLECTIVE
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => scrollTeam("left")}
+                    disabled={!canScrollLeft}
+                    aria-label="Previous members"
+                    className={`p-2 sm:p-2.5 rounded-xl border transition-all ${
+                      canScrollLeft
+                        ? "bg-[#141418] border-white/15 text-white hover:border-[#FFBE32] hover:text-[#FFBE32] hover:bg-[#1a1a22] shadow-lg active:scale-95 cursor-pointer"
+                        : "bg-[#0d0d10] border-white/5 text-gray-600 opacity-40 cursor-not-allowed"
+                    }`}
                   >
-                    {/* Gold Strip */}
-                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#FFBE32] to-transparent opacity-40 group-hover:opacity-100 transition-opacity" />
+                    <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => scrollTeam("right")}
+                    disabled={!canScrollRight}
+                    aria-label="Next members"
+                    className={`p-2 sm:p-2.5 rounded-xl border transition-all ${
+                      canScrollRight
+                        ? "bg-[#141418] border-white/15 text-white hover:border-[#FFBE32] hover:text-[#FFBE32] hover:bg-[#1a1a22] shadow-lg active:scale-95 cursor-pointer"
+                        : "bg-[#0d0d10] border-white/5 text-gray-600 opacity-40 cursor-not-allowed"
+                    }`}
+                  >
+                    <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </button>
+                </div>
+              </div>
 
-                    <div>
-                      {/* Photo / Portrait */}
-                      <div className="aspect-[4/5] w-full rounded-xl overflow-hidden bg-gradient-to-b from-[#181820] to-[#0A0A0C] border border-white/10 mb-3 relative">
-                        {member.avatar ? (
-                          <img
-                            src={member.avatar}
-                            alt={member.name}
-                            loading="eager"
-                            decoding="async"
-                            style={{ objectPosition: memberImagePositions[member.id] || "center 20%" }}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                            onError={(e) => {
-                              e.currentTarget.style.display = "none";
-                              const fallback = e.currentTarget.nextElementSibling as HTMLElement;
-                              if (fallback) fallback.style.display = "flex";
-                            }}
-                          />
-                        ) : null}
-                        <div
-                          style={{ display: member.avatar ? "none" : "flex" }}
-                          className="w-full h-full flex flex-col items-center justify-center font-display text-2xl font-black text-white/90"
-                        >
-                          {member.initials || "LZ"}
+              {/* Slider Track with Optional Floating Side Arrows */}
+              <div className="relative group/slider">
+                {/* Edge Gradient Shadows */}
+                {canScrollLeft && (
+                  <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-8 sm:w-16 bg-gradient-to-r from-[#070709] to-transparent z-20 transition-opacity" />
+                )}
+                {canScrollRight && (
+                  <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 sm:w-16 bg-gradient-to-l from-[#070709] to-transparent z-20 transition-opacity" />
+                )}
+
+                {/* Floating Chevron Buttons for Desktop */}
+                {canScrollLeft && (
+                  <button
+                    type="button"
+                    onClick={() => scrollTeam("left")}
+                    aria-label="Slide Left"
+                    className="hidden lg:flex absolute left-3 top-1/2 -translate-y-1/2 z-30 p-2.5 rounded-full bg-black/80 backdrop-blur-md border border-[#FFBE32]/40 text-[#FFBE32] shadow-[0_0_20px_rgba(0,0,0,0.8)] hover:bg-[#FFBE32] hover:text-black transition-all hover:scale-110 active:scale-95 cursor-pointer"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                )}
+                {canScrollRight && (
+                  <button
+                    type="button"
+                    onClick={() => scrollTeam("right")}
+                    aria-label="Slide Right"
+                    className="hidden lg:flex absolute right-3 top-1/2 -translate-y-1/2 z-30 p-2.5 rounded-full bg-black/80 backdrop-blur-md border border-[#FFBE32]/40 text-[#FFBE32] shadow-[0_0_20px_rgba(0,0,0,0.8)] hover:bg-[#FFBE32] hover:text-black transition-all hover:scale-110 active:scale-95 cursor-pointer"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                )}
+
+                {/* Horizontal Scrollable Container */}
+                <div
+                  ref={teamSliderRef}
+                  onScroll={checkScroll}
+                  className="flex gap-5 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-4 pt-1 px-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                >
+                  {collectiveMembers.map((member) => (
+                    <div
+                      key={member.id}
+                      className="w-[270px] sm:w-[290px] md:w-[305px] flex-shrink-0 snap-start group relative rounded-2xl bg-gradient-to-b from-[#141418] via-[#0C0C0E] to-[#070709] border border-white/10 hover:border-[#FFBE32]/70 p-4 shadow-[0_15px_40px_rgba(0,0,0,0.8)] hover:shadow-[0_20px_45px_rgba(255,190,50,0.2)] transition-all flex flex-col justify-between overflow-hidden"
+                    >
+                      {/* Gold Strip */}
+                      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#FFBE32] to-transparent opacity-40 group-hover:opacity-100 transition-opacity" />
+
+                      <div>
+                        {/* Photo / Portrait */}
+                        <div className="aspect-[4/5] w-full rounded-xl overflow-hidden bg-gradient-to-b from-[#181820] to-[#0A0A0C] border border-white/10 mb-3 relative">
+                          {member.avatar ? (
+                            <img
+                              src={member.avatar}
+                              alt={member.name}
+                              loading="eager"
+                              decoding="async"
+                              style={{ objectPosition: memberImagePositions[member.id] || "center 20%" }}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                                const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                                if (fallback) fallback.style.display = "flex";
+                              }}
+                            />
+                          ) : null}
+                          <div
+                            style={{ display: member.avatar ? "none" : "flex" }}
+                            className="w-full h-full flex flex-col items-center justify-center font-display text-2xl font-black text-white/90"
+                          >
+                            {member.initials || "LZ"}
+                          </div>
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+                          <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between text-[10px] font-mono">
+                            <span className="px-2 py-0.5 rounded bg-black/80 border border-white/10 text-gray-300">
+                              //{member.handle}
+                            </span>
+                            <span className="text-[#FFBE32]">{member.divisions[0]}</span>
+                          </div>
                         </div>
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
-                        <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between text-[10px] font-mono">
-                          <span className="px-2 py-0.5 rounded bg-black/80 border border-white/10 text-gray-300">
-                            //{member.handle}
-                          </span>
-                          <span className="text-[#FFBE32]">{member.divisions[0]}</span>
-                        </div>
+
+                        <h4 className="font-heading text-base font-bold text-white group-hover:text-[#FFBE32] transition-colors leading-snug mb-1">
+                          {member.name}
+                        </h4>
+                        <p className="text-[11px] text-gray-400 font-body line-clamp-2">
+                          {member.primaryRole}
+                        </p>
                       </div>
 
-                      <h4 className="font-heading text-base font-bold text-white group-hover:text-[#FFBE32] transition-colors leading-snug mb-1">
-                        {member.name}
-                      </h4>
-                      <p className="text-[11px] text-gray-400 font-body line-clamp-2">
-                        {member.primaryRole}
-                      </p>
-                    </div>
-
-                    <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs">
-                      <span className="font-mono text-[10px] text-gray-500">OPERATIONAL TEAM</span>
-                      <div className="flex items-center gap-1.5">
-                        {member.linkedin && (
-                          <a
-                            href={
-                              member.linkedin.startsWith("http")
-                                ? member.linkedin
-                                : `https://linkedin.com/in/${member.linkedin}`
-                            }
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-1 rounded bg-[#0A66C2]/20 hover:bg-[#0A66C2]/40 text-[#70B5F9] transition-colors"
-                            title="LinkedIn"
-                          >
-                            <LinkedInIcon className="h-3 w-3" />
-                          </a>
-                        )}
-                        {member.instagram && (
-                          <a
-                            href={
-                              member.instagram.startsWith("http")
-                                ? member.instagram
-                                : `https://instagram.com/${member.instagram.replace(/^@/, "")}`
-                            }
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-1 rounded bg-white/5 hover:bg-white/15 text-[#E1306C] transition-colors"
-                            title="Instagram"
-                          >
-                            <InstagramIcon className="h-3 w-3" />
-                          </a>
-                        )}
+                      <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs">
+                        <span className="font-mono text-[10px] text-gray-500">OPERATIONAL TEAM</span>
+                        <div className="flex items-center gap-1.5">
+                          {member.linkedin && (
+                            <a
+                              href={
+                                member.linkedin.startsWith("http")
+                                  ? member.linkedin
+                                  : `https://linkedin.com/in/${member.linkedin}`
+                              }
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1 rounded bg-[#0A66C2]/20 hover:bg-[#0A66C2]/40 text-[#70B5F9] transition-colors"
+                              title="LinkedIn"
+                            >
+                              <LinkedInIcon className="h-3 w-3" />
+                            </a>
+                          )}
+                          {member.instagram && (
+                            <a
+                              href={
+                                member.instagram.startsWith("http")
+                                  ? member.instagram
+                                  : `https://instagram.com/${member.instagram.replace(/^@/, "")}`
+                              }
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1 rounded bg-white/5 hover:bg-white/15 text-[#E1306C] transition-colors"
+                              title="Instagram"
+                            >
+                              <InstagramIcon className="h-3 w-3" />
+                            </a>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
 
               {/* View Full Collective Button */}
