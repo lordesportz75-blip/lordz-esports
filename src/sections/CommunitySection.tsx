@@ -48,7 +48,7 @@ export const CommunitySection = ({ showHeader = true }: CommunitySectionProps) =
   const channels = [
     {
       name: "OFFICIAL WHATSAPP",
-      title: "LORD ESPORTZ Channel",
+      title: "LORDZ ESPORTS Channel",
       label: "Official announcements, tournament releases, rosters & daily dispatches",
       badge: "ANNOUNCEMENTS & NEWS",
       icon: WhatsAppIcon,
@@ -128,7 +128,7 @@ export const CommunitySection = ({ showHeader = true }: CommunitySectionProps) =
               viewport={{ once: true }}
               className="font-display text-3xl sm:text-5xl md:text-6xl uppercase tracking-wider text-white font-bold"
             >
-              CONNECT WITH <span className="text-gold-gradient">LORD ESPORTZ</span>
+              CONNECT WITH <span className="text-gold-gradient">LORDZ ESPORTS</span>
             </motion.h2>
 
             <motion.p
@@ -214,7 +214,7 @@ export const CommunitySection = ({ showHeader = true }: CommunitySectionProps) =
                 <span>COMMERCIAL DESK</span>
               </div>
               <h3 className="font-display text-2xl sm:text-3xl uppercase tracking-wider text-white">
-                LORD ESPORTZ <span className="text-[#FFBE32]">BUSINESS &amp; PARTNERSHIP ENQUIRIES</span>
+                LORDZ ESPORTS <span className="text-[#FFBE32]">BUSINESS &amp; PARTNERSHIP ENQUIRIES</span>
               </h3>
               <p className="text-sm text-gray-300 font-body">
                 Interested in brand collaborations, tournament sponsorships, merchandise partnerships, or esports integrations? Contact our commercial team directly.

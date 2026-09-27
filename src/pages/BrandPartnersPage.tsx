@@ -184,10 +184,10 @@ export const BrandPartnersPage = () => {
         tier: p.tier || curatedMatch?.tier || "OFFICIAL PARTNER",
         category: p.category || curatedMatch?.category || "Esports Partner",
         logo: resolvedLogo,
-        website: p.websiteUrl || curatedMatch?.website || "https://lordesportz.com",
+        website: p.websiteUrl || curatedMatch?.website || "https://lordzesports.com",
         description:
           curatedMatch?.description ||
-          `Official brand partner collaborating with LORD ESPORTZ to advance competitive gaming excellence and fan engagement across India.`,
+          `Official brand partner collaborating with LORDZ ESPORTS to advance competitive gaming excellence and fan engagement across India.`,
         highlights: curatedMatch?.highlights || [
           "Official Partner Collaboration",
           "Brand Integration in Tournaments",

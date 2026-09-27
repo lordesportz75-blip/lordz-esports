@@ -129,7 +129,7 @@ app.use("/players", express.static(playersDir));
 // Dynamic XML Sitemap Generator
 const handleSitemapRequest = async (_req: express.Request, res: express.Response) => {
   try {
-    const siteUrl = (process.env.SITE_URL || "https://lordesportz.com").trim().replace(/\/+$/, "");
+    const siteUrl = (process.env.SITE_URL || "https://lordzesports.com").trim().replace(/\/+$/, "");
 
     // Fetch published public tournaments from database
     const tournaments = await prisma.tournament.findMany({
