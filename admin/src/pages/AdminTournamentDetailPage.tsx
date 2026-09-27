@@ -655,8 +655,8 @@ export const AdminTournamentDetailPage: React.FC = () => {
     setSavingRoomCredentials(true);
     try {
       const targetTournamentId = tournament?.id || tournamentId;
-      const res = await tournamentsApi.updateRoundCredentials(targetTournamentId, roundIdToUse || "default", payload);
-      if (res?.success) {
+      const res: any = await tournamentsApi.updateRoundCredentials(targetTournamentId, roundIdToUse || "default", payload);
+      if (res?.success || res?.id || res?.roomId || res?.data || (res && !res.error && res.message?.toLowerCase().includes("success"))) {
         const updatedRounds = await tournamentsApi.getRounds(targetTournamentId);
         if (updatedRounds && updatedRounds.length > 0) {
           setRounds(updatedRounds);
@@ -2352,7 +2352,13 @@ export const AdminTournamentDetailPage: React.FC = () => {
                             </span>
                           </div>
                           <p className="text-xs text-gray-400 font-body mt-0.5">
-                            {currentRound.description || "Tournament qualification bracket division"}
+                            {(() => {
+                              const desc = currentRound.description;
+                              if (!desc || (typeof desc === "string" && desc.trim().startsWith("{"))) {
+                                return currentRound.customNotes || "Tournament qualification bracket division";
+                              }
+                              return desc;
+                            })()}
                             {currentRound.startDate && ` • Starts: ${currentRound.startDate} ${currentRound.startTime || ""}`}
                           </p>
                         </div>

@@ -147,7 +147,26 @@ export async function apiRequest<T = any>(
       throw new Error(json.message || `Request failed with status ${response.status}`);
     }
 
-    const result = (json.data !== undefined ? json.data : (json as unknown as T)) as T;
+    let result: any;
+    if (json.data !== undefined) {
+      if (
+        typeof json.data === "object" &&
+        json.data !== null &&
+        !Array.isArray(json.data) &&
+        json.success !== undefined &&
+        (json.data as any).success === undefined
+      ) {
+        result = {
+          ...json.data,
+          success: json.success,
+          message: json.message,
+        };
+      } else {
+        result = json.data;
+      }
+    } else {
+      result = json as unknown as T;
+    }
 
     if (isCacheableGet) {
       clientCache.set(url, { data: result, timestamp: Date.now() });
