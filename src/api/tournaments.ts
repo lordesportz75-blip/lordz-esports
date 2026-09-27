@@ -72,8 +72,11 @@ export const tournamentsApi = {
   },
 
   getMyTournaments: async (): Promise<any[]> => {
-    const res = await apiRequest<{ success: boolean; tournaments: any[] }>("/my-tournaments", { method: "GET" }, { success: true, tournaments: [] });
-    return res.tournaments || [];
+    const res = await apiRequest<any>("/my-tournaments", { method: "GET" }, { success: true, tournaments: [] });
+    if (Array.isArray(res)) return res;
+    if (res?.data && Array.isArray(res.data)) return res.data;
+    if (res?.tournaments && Array.isArray(res.tournaments)) return res.tournaments;
+    return [];
   },
 
   searchPlayers: async (query: string, tournamentId?: string): Promise<any[]> => {

@@ -63,7 +63,7 @@ interface ClientCacheEntry<T> {
   timestamp: number;
 }
 const clientCache = new Map<string, ClientCacheEntry<any>>();
-const CLIENT_CACHE_TTL = 3 * 60 * 1000;
+const CLIENT_CACHE_TTL = 15 * 1000;
 
 export function clearClientCache(pattern?: string) {
   if (!pattern) {

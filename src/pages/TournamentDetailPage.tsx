@@ -168,40 +168,12 @@ export const TournamentDetailPage: React.FC = () => {
     );
   }, [tournament, userTournaments]);
 
-  if (loading && !tournament) {
-    return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center text-[#FFBE32] font-mono text-sm">
-        <div className="text-center space-y-3">
-          <div className="h-8 w-8 border-2 border-[#FFBE32] border-t-transparent rounded-full animate-spin mx-auto" />
-          <p>LOADING TOURNAMENT ARENA...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!tournament) {
-    return (
-      <div className="min-h-screen bg-[#050505] text-white flex flex-col items-center justify-center p-6 text-center">
-        <SEO title="Tournament Not Found | LORD ESPORTZ" noindex nofollow />
-        <Trophy className="h-16 w-16 text-gray-600 mb-4" />
-        <h1 className="font-display text-3xl uppercase tracking-wider">Tournament Not Found</h1>
-        <p className="text-sm text-gray-400 mt-2">The tournament arena you are looking for may have concluded or been archived.</p>
-        <Link
-          to="/tournaments"
-          className="mt-6 px-6 py-2.5 rounded-xl bg-[#FFBE32] text-black font-heading font-bold text-xs uppercase"
-        >
-          View All Tournaments
-        </Link>
-      </div>
-    );
-  }
-
-  const registeredCount = tournament.registeredTeams ?? (tournament.stats?.total || 0);
-  const totalSlots = tournament.totalTeams || 128;
+  const registeredCount = tournament?.registeredTeams ?? (tournament?.stats?.total || 0);
+  const totalSlots = tournament?.totalTeams || 128;
   const isTournamentFull = registeredCount >= totalSlots;
-  const allowWaitlist = Boolean((tournament as any).allowWaitlist);
-  const feeDisplay = formatCurrency(tournament.feeAmount ?? tournament.entryFee);
-  const prizeDisplay = formatCurrency(tournament.prizePool);
+  const allowWaitlist = Boolean((tournament as any)?.allowWaitlist);
+  const feeDisplay = tournament ? formatCurrency(tournament.feeAmount ?? tournament.entryFee) : "";
+  const prizeDisplay = tournament ? formatCurrency(tournament.prizePool) : "";
 
   const isUserRegistered = Boolean(userRegistration);
   const regStatus = userRegistration?.registration?.status || userRegistration?.status;
@@ -252,6 +224,73 @@ export const TournamentDetailPage: React.FC = () => {
     }
     return [];
   }, [tournament]);
+
+  const tournamentSchema = useMemo(() => {
+    if (!tournament) return null;
+    const path = `/tournaments/${tournament.slug || slug}`;
+    return {
+      "@context": "https://schema.org",
+      "@type": "SportsEvent",
+      name: tournament.title,
+      description:
+        tournament.shortDescription ||
+        tournament.description ||
+        `Official ${tournament.game} tournament hosted by LORD ESPORTZ.`,
+      url: `${SITE_URL}${path}`,
+      startDate: tournament.startDate || "2026-09-28T18:00:00Z",
+      ...(tournament.endDate ? { endDate: tournament.endDate } : {}),
+      eventStatus:
+        tournament.status === "CANCELLED"
+          ? "https://schema.org/EventCancelled"
+          : "https://schema.org/EventScheduled",
+      eventAttendanceMode: "https://schema.org/OnlineEventAttendanceMode",
+      location: {
+        "@type": "VirtualLocation",
+        url: `${SITE_URL}${path}`,
+      },
+      organizer: {
+        "@type": "SportsOrganization",
+        name: "LORD ESPORTZ",
+        url: SITE_URL,
+      },
+      offers: {
+        "@type": "Offer",
+        price: tournament.feeAmount || 0,
+        priceCurrency: tournament.currency || "INR",
+        availability: isTournamentFull ? "https://schema.org/SoldOut" : "https://schema.org/InStock",
+        url: `${SITE_URL}${path}`,
+        validFrom: tournament.regStartDate || undefined,
+      },
+    };
+  }, [tournament, slug, isTournamentFull]);
+
+  if (loading && !tournament) {
+    return (
+      <div className="min-h-screen bg-[#050505] flex items-center justify-center text-[#FFBE32] font-mono text-sm">
+        <div className="text-center space-y-3">
+          <div className="h-8 w-8 border-2 border-[#FFBE32] border-t-transparent rounded-full animate-spin mx-auto" />
+          <p>LOADING TOURNAMENT ARENA...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!tournament) {
+    return (
+      <div className="min-h-screen bg-[#050505] text-white flex flex-col items-center justify-center p-6 text-center">
+        <SEO title="Tournament Not Found | LORD ESPORTZ" noindex nofollow />
+        <Trophy className="h-16 w-16 text-gray-600 mb-4" />
+        <h1 className="font-display text-3xl uppercase tracking-wider">Tournament Not Found</h1>
+        <p className="text-sm text-gray-400 mt-2">The tournament arena you are looking for may have concluded or been archived.</p>
+        <Link
+          to="/tournaments"
+          className="mt-6 px-6 py-2.5 rounded-xl bg-[#FFBE32] text-black font-heading font-bold text-xs uppercase"
+        >
+          View All Tournaments
+        </Link>
+      </div>
+    );
+  }
 
   const handleAddSubstitute = () => {
     if (substitutes.length >= (tournament.substituteCount || 2)) {
@@ -324,44 +363,6 @@ export const TournamentDetailPage: React.FC = () => {
     }
   };
 
-  const tournamentSchema = useMemo(() => {
-    if (!tournament) return null;
-    const path = `/tournaments/${tournament.slug || slug}`;
-    return {
-      "@context": "https://schema.org",
-      "@type": "SportsEvent",
-      name: tournament.title,
-      description:
-        tournament.shortDescription ||
-        tournament.description ||
-        `Official ${tournament.game} tournament hosted by LORD ESPORTZ.`,
-      url: `${SITE_URL}${path}`,
-      startDate: tournament.startDate || "2026-09-28T18:00:00Z",
-      ...(tournament.endDate ? { endDate: tournament.endDate } : {}),
-      eventStatus:
-        tournament.status === "CANCELLED"
-          ? "https://schema.org/EventCancelled"
-          : "https://schema.org/EventScheduled",
-      eventAttendanceMode: "https://schema.org/OnlineEventAttendanceMode",
-      location: {
-        "@type": "VirtualLocation",
-        url: `${SITE_URL}${path}`,
-      },
-      organizer: {
-        "@type": "SportsOrganization",
-        name: "LORD ESPORTZ",
-        url: SITE_URL,
-      },
-      offers: {
-        "@type": "Offer",
-        price: tournament.feeAmount || 0,
-        priceCurrency: tournament.currency || "INR",
-        availability: isTournamentFull ? "https://schema.org/SoldOut" : "https://schema.org/InStock",
-        url: `${SITE_URL}${path}`,
-        validFrom: tournament.regStartDate || undefined,
-      },
-    };
-  }, [tournament, slug, isTournamentFull]);
 
   return (
     <div className="min-h-screen bg-[#050505] text-white selection:bg-[#FFBE32] selection:text-black">

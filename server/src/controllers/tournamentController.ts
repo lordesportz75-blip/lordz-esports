@@ -697,7 +697,18 @@ export const getTournaments = async (req: Request, res: Response, next: NextFunc
     if (dbConnected) {
       try {
         const where: any = {};
-        if (status && status !== "ALL") where.status = String(status);
+        if (status && status !== "ALL") {
+          const s = String(status).toUpperCase();
+          if (s === "UPCOMING") {
+            where.status = { in: ["UPCOMING", "REGISTRATION_OPEN", "CLOSING_SOON", "FULL", "REGISTRATION_CLOSED"] };
+          } else if (s === "LIVE") {
+            where.status = { in: ["LIVE", "ONGOING"] };
+          } else if (s === "COMPLETED") {
+            where.status = { in: ["COMPLETED", "ARCHIVED"] };
+          } else {
+            where.status = s;
+          }
+        }
         if (gameCategory && gameCategory !== "ALL") where.gameCategory = String(gameCategory);
         if (featured !== undefined) where.featured = featured === "true";
         if (search) {
@@ -768,7 +779,16 @@ export const getTournaments = async (req: Request, res: Response, next: NextFunc
     // In-memory fallback
     let result = [...memoryTournaments];
     if (status && status !== "ALL") {
-      result = result.filter((t) => t.status === status);
+      const s = String(status).toUpperCase();
+      if (s === "UPCOMING") {
+        result = result.filter((t) => ["UPCOMING", "REGISTRATION_OPEN", "CLOSING_SOON", "FULL", "REGISTRATION_CLOSED"].includes(t.status));
+      } else if (s === "LIVE") {
+        result = result.filter((t) => ["LIVE", "ONGOING"].includes(t.status));
+      } else if (s === "COMPLETED") {
+        result = result.filter((t) => ["COMPLETED", "ARCHIVED"].includes(t.status));
+      } else {
+        result = result.filter((t) => t.status === s);
+      }
     }
     if (gameCategory && gameCategory !== "ALL") {
       result = result.filter((t) => t.gameCategory === gameCategory);
@@ -831,6 +851,16 @@ export const getTournamentById = async (req: Request, res: Response, next: NextF
             ],
           } as any,
           include: {
+            stages: { orderBy: { order: "asc" } },
+            rounds: {
+              orderBy: { roundNumber: "asc" },
+              include: {
+                roundTeams: {
+                  include: { team: true },
+                },
+              },
+            },
+            leaderboard: { orderBy: { rank: "asc" } },
             registrations: {
               include: {
                 payment: true,
@@ -879,6 +909,9 @@ export const getTournamentById = async (req: Request, res: Response, next: NextF
               confirmedTeams: approved,
               availableSlots,
               status: dynamicStatus,
+              stages: tournament.stages || [],
+              rounds: tournament.rounds || [],
+              leaderboard: tournament.leaderboard || [],
               stats: {
                 total,
                 approved,
@@ -2781,15 +2814,41 @@ export const exportRegistrationsCsv = async (req: AuthenticatedRequest, res: Res
 export const getStages = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params;
-    const stages = memoryStages.filter((s) => s.tournamentId === id).sort((a, b) => a.order - b.order);
+    let stages: any[] = [];
+
+    if (dbConnected) {
+      try {
+        stages = await prisma.tournamentStage.findMany({
+          where: { tournamentId: id },
+          orderBy: { order: "asc" },
+          include: {
+            registrations: {
+              select: {
+                id: true,
+                teamName: true,
+                captainIgn: true,
+                status: true,
+                paymentStatus: true,
+              },
+            },
+          },
+        });
+      } catch (err) {
+        console.warn("Prisma getStages failed, falling back to memory:", err);
+      }
+    }
+
+    if (!stages || stages.length === 0) {
+      stages = memoryStages.filter((s) => s.tournamentId === id).sort((a, b) => a.order - b.order);
+    }
 
     // Attach count of squads currently in each stage
-    const stagesWithCounts = stages.map((s) => {
-      const teams = memoryRegistrations.filter((r) => r.tournamentId === id && r.currentStageId === s.id);
+    const stagesWithCounts = stages.map((s: any) => {
+      const teams = s.registrations || memoryRegistrations.filter((r) => r.tournamentId === id && r.currentStageId === s.id);
       return {
         ...s,
         currentTeamsCount: teams.length,
-        teams: teams.map((t) => ({
+        teams: teams.map((t: any) => ({
           id: t.id,
           teamName: t.teamName,
           captainIgn: t.captainIgn,
@@ -2936,10 +2995,24 @@ export const moveTeamsToStage = async (req: AuthenticatedRequest, res: Response,
 export const getLeaderboard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params;
-    // Ensure ranks are sorted accurately
-    recalculateLeaderboardRanks(id);
+    let entries: any[] = [];
 
-    const entries = memoryLeaderboard.filter((lb) => lb.tournamentId === id).sort((a, b) => a.rank - b.rank);
+    if (dbConnected) {
+      try {
+        entries = await prisma.tournamentLeaderboard.findMany({
+          where: { tournamentId: id },
+          orderBy: { rank: "asc" },
+        });
+      } catch (err) {
+        console.warn("Prisma getLeaderboard failed, fallback to memory:", err);
+      }
+    }
+
+    if (!entries || entries.length === 0) {
+      recalculateLeaderboardRanks(id);
+      entries = memoryLeaderboard.filter((lb) => lb.tournamentId === id).sort((a, b) => a.rank - b.rank);
+    }
+
     res.json({ success: true, data: entries });
   } catch (error) {
     next(error);

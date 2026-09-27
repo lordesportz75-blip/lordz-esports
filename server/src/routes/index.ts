@@ -80,36 +80,42 @@ router.get(
 router.post(
   "/tournaments/registrations/:id/payment",
   authenticate,
+  invalidate("http:*tournaments*"),
   tournamentCtrl.submitPayment
 );
 router.put(
   "/tournaments/registrations/:id/payment-verify",
   authenticate,
   requireRole("SUPER_ADMIN", "TOURNAMENT_ADMIN"),
+  invalidate("http:*tournaments*"),
   tournamentCtrl.verifyPayment
 );
 router.put(
   "/tournaments/registrations/:id/payment-reject",
   authenticate,
   requireRole("SUPER_ADMIN", "TOURNAMENT_ADMIN"),
+  invalidate("http:*tournaments*"),
   tournamentCtrl.rejectPayment
 );
 router.put(
   "/tournaments/registrations/:id/status",
   authenticate,
   requireRole("SUPER_ADMIN", "TOURNAMENT_ADMIN"),
+  invalidate("http:*tournaments*"),
   tournamentCtrl.updateRegistrationStatus
 );
 router.put(
   "/tournaments/registrations/:id/payment",
   authenticate,
   requireRole("SUPER_ADMIN", "TOURNAMENT_ADMIN"),
+  invalidate("http:*tournaments*"),
   tournamentCtrl.updatePaymentStatus
 );
 router.post(
   "/tournaments/registrations/bulk",
   authenticate,
   requireRole("SUPER_ADMIN", "TOURNAMENT_ADMIN"),
+  invalidate("http:*tournaments*"),
   tournamentCtrl.bulkActionRegistrations
 );
 router.get(
@@ -123,6 +129,7 @@ router.post(
   "/tournaments/:id/duplicate",
   authenticate,
   requireRole("SUPER_ADMIN", "TOURNAMENT_ADMIN"),
+  invalidate("http:*tournaments*"),
   tournamentCtrl.duplicateTournament
 );
 
@@ -132,22 +139,27 @@ router.post(
   "/tournaments/:id/waitlist/:registrationId/promote",
   authenticate,
   requireRole("SUPER_ADMIN", "TOURNAMENT_ADMIN"),
+  invalidate("http:*tournaments*"),
   tournamentCtrl.promoteWaitlistTeam
 );
 router.delete(
   "/tournaments/:id/waitlist/:registrationId",
   authenticate,
   requireRole("SUPER_ADMIN", "TOURNAMENT_ADMIN"),
+  invalidate("http:*tournaments*"),
   tournamentCtrl.removeWaitlistTeam
 );
 
 // Tournament Check-In
 router.post("/tournaments/:id/check-in", authenticate, tournamentCtrl.checkInTeam);
+router.post("/tournaments/:id/checkin", authenticate, tournamentCtrl.checkInTeam);
 router.get("/tournaments/:id/check-in-status", tournamentCtrl.getTournamentCheckInStatus);
+router.get("/tournaments/:id/matches", matchCtrl.getMatches);
 router.post(
   "/tournaments/:id/handle-no-shows",
   authenticate,
   requireRole("SUPER_ADMIN", "TOURNAMENT_ADMIN"),
+  invalidate("http:*tournaments*"),
   tournamentCtrl.handleNoShows
 );
 
@@ -280,7 +292,12 @@ router.delete(
   invalidate("http:*tournaments*"),
   tournamentCtrl.deleteTournament
 );
-router.post("/tournaments/:id/register", optionalAuth, tournamentCtrl.registerSquad);
+router.post(
+  "/tournaments/:id/register",
+  optionalAuth,
+  invalidate("http:*tournaments*"),
+  tournamentCtrl.registerSquad
+);
 
 // ================= MATCH CENTER ROUTES =================
 router.get("/matches", matchCtrl.getMatches);

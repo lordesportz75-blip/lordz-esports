@@ -82,7 +82,14 @@ export const TournamentsSection = ({
   const filteredTournaments = useMemo(() => {
     return tournaments.filter((t) => {
       const matchGame = selectedGame === "ALL" || t.gameCategory === selectedGame;
-      const matchStatus = selectedStatus === "ALL" || t.status === selectedStatus;
+      let matchStatus = selectedStatus === "ALL";
+      if (selectedStatus === "LIVE") {
+        matchStatus = t.status === "LIVE" || t.status === "ONGOING";
+      } else if (selectedStatus === "UPCOMING") {
+        matchStatus = ["UPCOMING", "REGISTRATION_OPEN", "CLOSING_SOON", "FULL", "REGISTRATION_CLOSED"].includes(t.status);
+      } else if (selectedStatus === "COMPLETED") {
+        matchStatus = t.status === "COMPLETED" || t.status === "ARCHIVED";
+      }
       return matchGame && matchStatus;
     });
   }, [tournaments, selectedGame, selectedStatus]);

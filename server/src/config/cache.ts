@@ -134,10 +134,20 @@ export async function delCache(keyOrPrefix: string): Promise<void> {
   }
 
   // 2. Invalidate in memory
-  const cleanPrefix = keyOrPrefix.replace(/\*/g, "");
-  for (const k of memoryStore.keys()) {
-    if (k.startsWith(cleanPrefix) || k === keyOrPrefix) {
-      memoryStore.delete(k);
+  if (keyOrPrefix.includes("*")) {
+    const escaped = keyOrPrefix.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*");
+    const regex = new RegExp("^" + escaped + "$");
+    const clean = keyOrPrefix.replace(/[*:]/g, "");
+    for (const k of memoryStore.keys()) {
+      if (regex.test(k) || (clean && k.includes(clean))) {
+        memoryStore.delete(k);
+      }
+    }
+  } else {
+    for (const k of memoryStore.keys()) {
+      if (k.startsWith(keyOrPrefix) || k === keyOrPrefix || k.includes(keyOrPrefix)) {
+        memoryStore.delete(k);
+      }
     }
   }
 }
