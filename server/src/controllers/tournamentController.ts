@@ -4,6 +4,15 @@ import { prisma } from "../config/prisma.js";
 import { AuthenticatedRequest } from "../middleware/auth.js";
 import { sendRoomCredentialsEmail } from "../services/emailService.js";
 
+function parsePrismaDateTime(val: any): Date | null {
+  if (!val) return null;
+  if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+  const str = String(val).trim();
+  if (!str) return null;
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 // ================= VALIDATION SCHEMAS =================
 
 const tournamentSchema = z.object({
@@ -812,7 +821,12 @@ export const createTournament = async (req: AuthenticatedRequest, res: Response,
           generatedSlug = `${generatedSlug}-${Date.now().toString(36)}`;
         }
 
-        const createPayload: any = { ...data, slug: generatedSlug };
+        const createPayload: any = {
+          ...data,
+          slug: generatedSlug,
+          rosterLockDate: parsePrismaDateTime(data.rosterLockDate),
+          regDeadline: parsePrismaDateTime(data.regDeadline),
+        };
         if (rawData.id) {
           const existingId = await prisma.tournament.findUnique({ where: { id: rawData.id } });
           if (!existingId) {
@@ -918,9 +932,17 @@ export const updateTournament = async (req: AuthenticatedRequest, res: Response,
 
     if (dbConnected) {
       try {
+        const updatePayload: any = { ...data };
+        if (data.rosterLockDate !== undefined) {
+          updatePayload.rosterLockDate = parsePrismaDateTime(data.rosterLockDate);
+        }
+        if (data.regDeadline !== undefined) {
+          updatePayload.regDeadline = parsePrismaDateTime(data.regDeadline);
+        }
+
         const updated = await prisma.tournament.update({
           where: { id },
-          data,
+          data: updatePayload,
           include: { stages: true, rounds: true },
         });
 

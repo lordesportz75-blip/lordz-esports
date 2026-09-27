@@ -350,17 +350,6 @@ export const collectiveMembers: CollectiveMember[] = [
     avatar: "/members/file_00000000718c8208b08ee644638956fd.png",
     instagram: "https://www.instagram.com/smiley__surya__07?stkn=dnQzZWt2MDJqcDdy",
   },
-  {
-    id: "editor",
-    name: "KARAN",
-    handle: "Editor",
-    primaryRole: "Editor",
-    divisions: ["Community"],
-    focus: "Discord ecosystem, fan safety, community tournaments & member support",
-    initials: "WQ",
-    avatar: "/members/EDTIOR.jpeg",
-    instagram: "https://www.instagram.com/warqueen.ff?stkn=MXV1OWEzM2V1dmZhYw==",
-  },
 ];
 
 // Backwards-compatibility for tournament divisions showcase
