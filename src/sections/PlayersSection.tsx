@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { SectionHeading } from "../components/common/SectionHeading";
 import { playersData, type Player } from "../data/players";
 import { playersApi } from "../api/players";
+import { optimizeCloudinaryUrl } from "../utils/imageOptimizer";
 import logoImg from "../assets/lordz-logo.png";
 import { Crosshair, Shield, Zap, Target } from "lucide-react";
 
@@ -20,14 +21,28 @@ interface PlayersSectionProps {
 }
 
 export const PlayersSection = ({ showHeader = true }: PlayersSectionProps) => {
-  const [players, setPlayers] = useState<Player[]>(playersData);
+  const [players, setPlayers] = useState<Player[]>(() => {
+    try {
+      const cached = localStorage.getItem("lordz_pro_athletes_cache");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return playersData;
+  });
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     playersApi
       .getAll()
       .then((data) => {
-        if (data && data.length > 0) setPlayers(data);
+        if (data && data.length > 0) {
+          setPlayers(data);
+          try {
+            localStorage.setItem("lordz_pro_athletes_cache", JSON.stringify(data));
+          } catch {}
+        }
       })
       .catch(() => {});
   }, []);
@@ -67,7 +82,8 @@ export const PlayersSection = ({ showHeader = true }: PlayersSectionProps) => {
           {players.map((player) => {
             const isBeast = player.ign === "BEAST" || player.id === "player-beast";
             const isImageFailed = failedImages[player.id];
-            const athleteImg = !isImageFailed && (player.image || player.avatarUrl || (isBeast ? "/players/player-beast.jpg" : null));
+            const rawImg = !isImageFailed && (player.image || player.avatarUrl || (isBeast ? "/players/player-beast.jpg" : null));
+            const athleteImg = rawImg ? optimizeCloudinaryUrl(rawImg, 500) : null;
             const instaHandle = player.instagram?.trim();
             const instaUrl = instaHandle
               ? instaHandle.startsWith("http")

@@ -17,7 +17,9 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { playersData } from "../data/players";
+import { playersData, type Player } from "../data/players";
+import { playersApi } from "../api/players";
+import { optimizeCloudinaryUrl } from "../utils/imageOptimizer";
 import { collectiveMembers } from "../data/teams";
 
 // Social SVG Icon for Instagram
@@ -76,6 +78,32 @@ export const AboutSection = ({
   defaultTab = "manifesto",
 }: AboutSectionProps) => {
   const [activeTab, setActiveTab] = useState<"manifesto" | "players" | "teams">(defaultTab);
+  const [players, setPlayers] = useState<Player[]>(() => {
+    try {
+      const cached = localStorage.getItem("lordz_pro_athletes_cache");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return playersData;
+  });
+  const [failedPlayerImages, setFailedPlayerImages] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    playersApi
+      .getAll()
+      .then((data) => {
+        if (data && data.length > 0) {
+          setPlayers(data);
+          try {
+            localStorage.setItem("lordz_pro_athletes_cache", JSON.stringify(data));
+          } catch {}
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const teamSliderRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -339,74 +367,88 @@ export const AboutSection = ({
               className="space-y-8"
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                {playersData.slice(0, 4).map((player) => (
-                  <div
-                    key={player.id}
-                    className="group relative rounded-2xl bg-gradient-to-b from-[#141418] via-[#0C0C0E] to-[#070709] border border-white/10 hover:border-[#FFBE32]/70 p-4 shadow-[0_15px_40px_rgba(0,0,0,0.8)] hover:shadow-[0_20px_45px_rgba(255,190,50,0.2)] transition-all flex flex-col justify-between overflow-hidden"
-                  >
-                    {/* Gold Strip */}
-                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#FFBE32] to-transparent opacity-40 group-hover:opacity-100 transition-opacity" />
+                {players.slice(0, 4).map((player) => {
+                  const rawImg =
+                    !failedPlayerImages[player.id] &&
+                    (player.image || player.avatarUrl || `/players/${player.id}.webp`);
+                  const athleteImg = rawImg ? optimizeCloudinaryUrl(rawImg, 500) : "";
 
-                    <div>
-                      {/* Athlete Role & Team */}
-                      <div className="flex items-center justify-between mb-3 text-[10px] font-heading font-bold uppercase">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-black/70 border border-white/10 text-gray-300">
-                          {getRoleIcon(player.role)}
-                          {player.role}
-                        </span>
-                        <span className="font-mono text-[#FFBE32] bg-[#FFBE32]/10 px-2 py-0.5 rounded border border-[#FFBE32]/25">
-                          #{player.jerseyNumber || "00"}
-                        </span>
-                      </div>
+                  return (
+                    <div
+                      key={player.id}
+                      className="group relative rounded-2xl bg-gradient-to-b from-[#141418] via-[#0C0C0E] to-[#070709] border border-white/10 hover:border-[#FFBE32]/70 p-4 shadow-[0_15px_40px_rgba(0,0,0,0.8)] hover:shadow-[0_20px_45px_rgba(255,190,50,0.2)] transition-all flex flex-col justify-between overflow-hidden"
+                    >
+                      {/* Gold Strip */}
+                      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#FFBE32] to-transparent opacity-40 group-hover:opacity-100 transition-opacity" />
 
-                      {/* Photo Container */}
-                      <div className="aspect-[4/5] w-full rounded-xl overflow-hidden bg-gradient-to-b from-[#181820] to-[#0A0A0C] border border-white/10 mb-3 relative">
-                        <img
-                          src={player.image || `/players/${player.id}.webp`}
-                          alt={player.ign}
-                          loading="eager"
-                          decoding="async"
-                          className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
-                          onError={(e) => {
-                            e.currentTarget.src = "/players/player-beast.webp";
-                          }}
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
-                        <div className="absolute bottom-2.5 left-2.5">
-                          <span className="font-display text-xl uppercase tracking-wider text-white group-hover:text-[#FFBE32] transition-colors block">
-                            {player.ign}
+                      <div>
+                        {/* Athlete Role & Team */}
+                        <div className="flex items-center justify-between mb-3 text-[10px] font-heading font-bold uppercase">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-black/70 border border-white/10 text-gray-300">
+                            {getRoleIcon(player.role)}
+                            {player.role}
                           </span>
-                          <span className="text-[10px] font-heading uppercase text-gray-400">
-                            {player.realName}
+                          <span className="font-mono text-[#FFBE32] bg-[#FFBE32]/10 px-2 py-0.5 rounded border border-[#FFBE32]/25">
+                            #{player.jerseyNumber || "00"}
                           </span>
                         </div>
+
+                        {/* Photo Container */}
+                        <div className="aspect-[4/5] w-full rounded-xl overflow-hidden bg-gradient-to-b from-[#181820] to-[#0A0A0C] border border-white/10 mb-3 relative flex items-center justify-center">
+                          {athleteImg ? (
+                            <img
+                              src={athleteImg}
+                              alt={`${player.ign} (${player.realName})`}
+                              loading="eager"
+                              decoding="async"
+                              fetchPriority="high"
+                              className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
+                              onError={() => {
+                                setFailedPlayerImages((prev) => ({ ...prev, [player.id]: true }));
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center font-display text-3xl font-black text-[#FFBE32]/80">
+                              {player.ign?.slice(0, 2) || "LZ"}
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" />
+                          <div className="absolute bottom-2.5 left-2.5 right-2.5">
+                            <span className="font-display text-xl uppercase tracking-wider text-white group-hover:text-[#FFBE32] transition-colors block leading-tight truncate">
+                              {player.ign}
+                            </span>
+                            <span className="text-[10px] font-heading uppercase text-gray-400 block truncate">
+                              {player.realName}
+                            </span>
+                          </div>
+                        </div>
+
+                        <p className="text-xs text-gray-400 font-body leading-relaxed line-clamp-2">
+                          {player.about || player.featuredQuote || "Pro athlete competing for LORD ESPORTZ."}
+                        </p>
                       </div>
 
-                      <p className="text-xs text-gray-400 font-body leading-relaxed line-clamp-2">
-                        {player.about}
-                      </p>
+                      <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs">
+                        <span className="font-mono text-[10px] text-gray-500">{player.game || "FREE FIRE MAX"}</span>
+                        {player.instagram && (
+                          <a
+                            href={
+                              player.instagram.startsWith("http")
+                                ? player.instagram
+                                : `https://instagram.com/${player.instagram.replace(/^@/, "")}`
+                            }
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[11px] text-[#FFBE32] hover:underline"
+                          >
+                            <InstagramIcon className="h-3 w-3" />
+                            <span>{player.instagram}</span>
+                          </a>
+                        )}
+                      </div>
                     </div>
-
-                    <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs">
-                      <span className="font-mono text-[10px] text-gray-500">FREE FIRE MAX</span>
-                      {player.instagram && (
-                        <a
-                          href={
-                            player.instagram.startsWith("http")
-                              ? player.instagram
-                              : `https://instagram.com/${player.instagram.replace(/^@/, "")}`
-                          }
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-[11px] text-[#FFBE32] hover:underline"
-                        >
-                          <InstagramIcon className="h-3 w-3" />
-                          <span>{player.instagram}</span>
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* View Full Roster Button */}
