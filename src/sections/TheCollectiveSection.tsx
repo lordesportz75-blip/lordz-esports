@@ -141,12 +141,12 @@ export const TheCollectiveSection = ({
 
                 <div>
                   {/* Dedicated Member Portrait Container */}
-                  <div className="relative aspect-[4/5] w-full rounded-xl overflow-hidden bg-[#0A0A0C] border border-white/10 mb-4 group-hover:border-[#FFBE32]/40 transition-colors">
+                  <div className="relative aspect-[4/5] w-full rounded-xl overflow-hidden bg-gradient-to-b from-[#181820] to-[#0A0A0C] border border-white/10 mb-4 group-hover:border-[#FFBE32]/40 transition-colors">
                     {member.avatar ? (
                       <img
                         src={member.avatar}
                         alt={`${member.name} - ${member.primaryRole}`}
-                        loading="lazy"
+                        loading="eager"
                         decoding="async"
                         style={{ objectPosition }}
                         onError={(e) => {

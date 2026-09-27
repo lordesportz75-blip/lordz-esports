@@ -60,6 +60,15 @@ interface AboutSectionProps {
   defaultTab?: "manifesto" | "players" | "teams";
 }
 
+const memberImagePositions: Record<string, string> = {
+  "dinesh-s": "center 20%",
+  "jeremiah-paul": "center 15%",
+  "karthik-r": "center 15%",
+  founder: "center 20%",
+  "demo-community-manager": "center 10%",
+  CEO: "center 10%",
+};
+
 export const AboutSection = ({
   showHeader = true,
   defaultTab = "manifesto",
@@ -405,22 +414,28 @@ export const AboutSection = ({
 
                     <div>
                       {/* Photo / Portrait */}
-                      <div className="aspect-[4/5] w-full rounded-xl overflow-hidden bg-[#0A0A0C] border border-white/10 mb-3 relative">
+                      <div className="aspect-[4/5] w-full rounded-xl overflow-hidden bg-gradient-to-b from-[#181820] to-[#0A0A0C] border border-white/10 mb-3 relative">
                         {member.avatar ? (
                           <img
                             src={member.avatar}
                             alt={member.name}
-                            loading="lazy"
-                            className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                            loading="eager"
+                            decoding="async"
+                            style={{ objectPosition: memberImagePositions[member.id] || "center 20%" }}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                             onError={(e) => {
                               e.currentTarget.style.display = "none";
+                              const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                              if (fallback) fallback.style.display = "flex";
                             }}
                           />
-                        ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center font-display text-2xl font-black text-white/90">
-                            {member.initials || "LZ"}
-                          </div>
-                        )}
+                        ) : null}
+                        <div
+                          style={{ display: member.avatar ? "none" : "flex" }}
+                          className="w-full h-full flex flex-col items-center justify-center font-display text-2xl font-black text-white/90"
+                        >
+                          {member.initials || "LZ"}
+                        </div>
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
                         <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between text-[10px] font-mono">
                           <span className="px-2 py-0.5 rounded bg-black/80 border border-white/10 text-gray-300">
