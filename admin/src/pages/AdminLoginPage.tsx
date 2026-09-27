@@ -31,7 +31,7 @@ export const AdminLoginPage: React.FC = () => {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok || !data.success) {
-        setError(data.message || "Invalid email or password. Use admin@lordz.gg / LordzAdmin2026!");
+        setError(data.message || "Invalid email or password. Check credentials.");
         return;
       }
 
@@ -45,11 +45,11 @@ export const AdminLoginPage: React.FC = () => {
       navigate(from, { replace: true });
     } catch (err: any) {
       // Offline fallback: ONLY when backend network fetch itself fails (e.g. server offline)
-      if (email === "admin@lordz.gg" && (password === "LordzAdmin2026!" || password.length >= 6)) {
+      if (email === "admin@lordz.gg" && (password === "Admin@2026" || password === "LordzAdmin2026!")) {
         login("demo-admin-token", {
           id: "4a8879b4-c0a4-40c4-bce6-181b496bec6f",
           email: "admin@lordz.gg",
-          role: "ADMIN",
+          role: "SUPER_ADMIN",
           fullName: "Lord Administrator",
           ign: "LORD_OVERLORD",
         });
@@ -65,7 +65,7 @@ export const AdminLoginPage: React.FC = () => {
 
   const fillDemo = () => {
     setEmail("admin@lordz.gg");
-    setPassword("LordzAdmin2026!");
+    setPassword("Admin@2026");
     setError(null);
   };
 

@@ -100,7 +100,7 @@ export async function apiRequest<T = any>(
   const token =
     localStorage.getItem("lordz_admin_token") ||
     localStorage.getItem("token") ||
-    (import.meta.env.DEV ? "demo-admin-token" : null);
+    null;
 
   const method = (options.method || "GET").toUpperCase();
   const headers: Record<string, string> = {

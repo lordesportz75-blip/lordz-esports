@@ -357,6 +357,8 @@ export const AdminTournamentsPage: React.FC = () => {
   // Load Tournaments
   const loadTournaments = async () => {
     setLoading(true);
+    // Always bust cache so admin sees live data, not stale SWR
+    clearClientCache("tournaments");
     try {
       const data = await tournamentsApi.getAll({
         status: statusFilter,
