@@ -46,6 +46,7 @@ export const TournamentDetailPage: React.FC = () => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [userTournaments, setUserTournaments] = useState<any[]>([]);
   const [roomAccess, setRoomAccess] = useState<any | null>(null);
+  const [selectedRoundTab, setSelectedRoundTab] = useState<string | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<
@@ -147,13 +148,31 @@ export const TournamentDetailPage: React.FC = () => {
         .then((res) => {
           if (res?.success && res?.data) {
             setRoomAccess(res.data);
+            setSelectedRoundTab(res.data.roundId || null);
           }
         })
         .catch(() => {});
     } else {
       setRoomAccess(null);
+      setSelectedRoundTab(null);
     }
   }, [isAuthenticated, tournament?.id]);
+
+  const activeRoundData = useMemo(() => {
+    if (!roomAccess) return null;
+    if (roomAccess.allAssignedRounds && roomAccess.allAssignedRounds.length > 0 && selectedRoundTab) {
+      const found = roomAccess.allAssignedRounds.find((r: any) => r.roundId === selectedRoundTab);
+      if (found) {
+        return {
+          ...roomAccess,
+          ...found,
+          hasAccess: found.hasAccess ?? (found.status !== "ELIMINATED" && found.credentialsPublished),
+          isEliminated: found.status === "ELIMINATED",
+        };
+      }
+    }
+    return roomAccess;
+  }, [roomAccess, selectedRoundTab]);
 
   // Check if current user is registered in this tournament
   const userRegistration = useMemo(() => {
@@ -596,9 +615,45 @@ export const TournamentDetailPage: React.FC = () => {
           </div>
 
           {/* PLAYER ROOM ACCESS & ELIMINATION ENGINE BANNER */}
-          {roomAccess && (
+          {activeRoundData && (
             <div className="mt-8 pt-6 border-t border-white/10">
-              {roomAccess.isEliminated ? (
+              {/* Multi-Round / Division Selector (if squad advanced or assigned across multiple rounds) */}
+              {roomAccess?.allAssignedRounds && roomAccess.allAssignedRounds.length > 1 && (
+                <div className="mb-4 p-3 rounded-xl bg-black/60 border border-white/10 flex flex-wrap items-center gap-2">
+                  <span className="text-[10px] font-mono text-gray-400 uppercase shrink-0 font-bold">
+                    SELECT ROUND / DIVISION:
+                  </span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {roomAccess.allAssignedRounds.map((rnd: any) => {
+                      const isSelected = (selectedRoundTab || roomAccess.roundId) === rnd.roundId;
+                      const isElim = rnd.status === "ELIMINATED";
+                      return (
+                        <button
+                          key={rnd.roundId}
+                          type="button"
+                          onClick={() => setSelectedRoundTab(rnd.roundId)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                            isSelected
+                              ? "bg-[#FFBE32] text-black shadow-md shadow-[#FFBE32]/20 font-black"
+                              : isElim
+                              ? "bg-red-950/40 text-red-300 border border-red-500/30 hover:bg-red-900/50"
+                              : "bg-white/10 text-gray-300 hover:bg-white/20 hover:text-white"
+                          }`}
+                        >
+                          <span>{rnd.roundName}</span>
+                          {isElim ? (
+                            <span className="text-[9px] px-1 rounded bg-red-500/20 text-red-300">Eliminated</span>
+                          ) : (
+                            <span className="text-[9px] px-1 rounded bg-black/40 text-[#FFBE32]">Slot #{rnd.slotNumber}</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {activeRoundData.isEliminated ? (
                 <div className="p-5 rounded-2xl bg-gradient-to-r from-red-950/60 via-red-900/30 to-black border-2 border-red-500/50 backdrop-blur-xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-[0_0_30px_rgba(239,68,68,0.2)]">
                   <div className="flex items-center gap-3.5">
                     <div className="w-12 h-12 rounded-xl bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400 shrink-0">
@@ -607,14 +662,14 @@ export const TournamentDetailPage: React.FC = () => {
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-heading font-black uppercase tracking-wider text-red-400">
-                          TOURNAMENT ENDED — YOUR SQUAD HAS BEEN ELIMINATED
+                          {activeRoundData.roundName} — SQUAD ELIMINATED
                         </span>
                         <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-red-500/20 text-red-300 border border-red-500/30">
                           STAGE CONCLUDED
                         </span>
                       </div>
                       <p className="text-xs text-gray-300 font-mono mt-1">
-                        Squad <strong className="text-white">"{roomAccess.teamName}"</strong> did not qualify from <strong className="text-red-400">{roomAccess.eliminatedRound || "the previous round"}</strong>. Room credentials for subsequent stages are closed. Thank you for competing in LORD ESPORTZ!
+                        Squad <strong className="text-white">"{activeRoundData.teamName}"</strong> did not qualify from <strong className="text-red-400">{activeRoundData.roundName || activeRoundData.eliminatedRound || "the previous round"}</strong>. Room credentials for subsequent stages are closed.
                       </p>
                     </div>
                   </div>
@@ -622,7 +677,7 @@ export const TournamentDetailPage: React.FC = () => {
                     ELIMINATED
                   </span>
                 </div>
-              ) : roomAccess.hasAccess ? (
+              ) : activeRoundData.hasAccess ? (
                 <div className="p-6 rounded-2xl bg-gradient-to-br from-[#FFBE32]/15 via-[#121218] to-black border-2 border-[#FFBE32]/60 shadow-[0_0_35px_rgba(255,190,50,0.2)] space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
                     <div className="flex items-center gap-3">
@@ -639,13 +694,13 @@ export const TournamentDetailPage: React.FC = () => {
                           </span>
                         </div>
                         <div className="text-base font-display uppercase tracking-wider text-white mt-0.5">
-                          {roomAccess.roundName} • SQUAD: {roomAccess.teamName}
+                          {activeRoundData.roundName} • SQUAD: {activeRoundData.teamName}
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="px-3.5 py-1.5 rounded-xl text-xs font-mono font-black bg-[#FFBE32] text-black shadow-lg">
-                        LOBBY SLOT #{roomAccess.slotNumber}
+                        LOBBY SLOT #{activeRoundData.slotNumber}
                       </span>
                     </div>
                   </div>
@@ -656,13 +711,13 @@ export const TournamentDetailPage: React.FC = () => {
                       <div>
                         <div className="text-[10px] font-mono uppercase text-gray-400">ROOM ID</div>
                         <div className="font-mono text-lg font-bold text-white tracking-widest mt-0.5">
-                          {roomAccess.roomId || "PENDING"}
+                          {activeRoundData.roomId || "PENDING"}
                         </div>
                       </div>
-                      {roomAccess.roomId && (
+                      {activeRoundData.roomId && (
                         <button
                           type="button"
-                          onClick={() => handleCopy(roomAccess.roomId, "detail-roomId")}
+                          onClick={() => handleCopy(activeRoundData.roomId, "detail-roomId")}
                           className="p-2 rounded-lg bg-white/5 hover:bg-white/15 text-gray-300 hover:text-white transition-colors cursor-pointer"
                           title="Copy Room ID"
                         >
@@ -676,13 +731,13 @@ export const TournamentDetailPage: React.FC = () => {
                       <div>
                         <div className="text-[10px] font-mono uppercase text-gray-400">PASSWORD</div>
                         <div className="font-mono text-lg font-bold text-amber-400 tracking-widest mt-0.5">
-                          {roomAccess.roomPassword || "NONE"}
+                          {activeRoundData.roomPassword || "NONE"}
                         </div>
                       </div>
-                      {roomAccess.roomPassword && (
+                      {activeRoundData.roomPassword && (
                         <button
                           type="button"
-                          onClick={() => handleCopy(roomAccess.roomPassword, "detail-roomPassword")}
+                          onClick={() => handleCopy(activeRoundData.roomPassword, "detail-roomPassword")}
                           className="p-2 rounded-lg bg-white/5 hover:bg-white/15 text-gray-300 hover:text-white transition-colors cursor-pointer"
                           title="Copy Password"
                         >
@@ -699,7 +754,7 @@ export const TournamentDetailPage: React.FC = () => {
                       <div>
                         <div className="text-[10px] font-mono uppercase text-gray-400">MAP</div>
                         <div className="font-mono text-sm font-bold text-white uppercase mt-0.5">
-                          {roomAccess.map || "BERMUDA"}
+                          {activeRoundData.map || "BERMUDA"}
                         </div>
                       </div>
                     </div>
@@ -712,25 +767,25 @@ export const TournamentDetailPage: React.FC = () => {
                       <div>
                         <div className="text-[10px] font-mono uppercase text-gray-400">MATCH SCHEDULE</div>
                         <div className="font-mono text-sm font-bold text-white mt-0.5">
-                          {roomAccess.roomTime || "SEE SCHEDULE"}
+                          {activeRoundData.roomTime || "SEE SCHEDULE"}
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  {roomAccess.notes && (
+                  {activeRoundData.notes && (
                     <div className="p-3 rounded-xl bg-black/50 border border-white/10 text-xs font-mono text-gray-300 flex items-start gap-2">
                       <span className="text-[#FFBE32] font-bold shrink-0">ADMIN INSTRUCTIONS:</span>
-                      <span>{roomAccess.notes}</span>
+                      <span>{activeRoundData.notes}</span>
                     </div>
                   )}
 
                   <div className="text-[11px] font-mono text-amber-300/80 flex items-center gap-1.5">
                     <span>⚠️</span>
-                    <span>Free Fire Custom Room Rule: Each lobby is capped at 12 squads. Join specifically into <strong>Slot #{roomAccess.slotNumber}</strong>. Non-assigned squads will be removed.</span>
+                    <span>Free Fire Custom Room Rule: Each lobby is capped at 12 squads. Join specifically into <strong>Slot #{activeRoundData.slotNumber}</strong> of <strong>{activeRoundData.roundName}</strong>. Non-assigned squads will be removed.</span>
                   </div>
                 </div>
-              ) : roomAccess.isRegistered && roomAccess.roundName ? (
+              ) : activeRoundData.isRegistered && activeRoundData.roundName ? (
                 <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 backdrop-blur-xl flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="flex items-center gap-3.5">
                     <div className="w-11 h-11 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
@@ -738,15 +793,15 @@ export const TournamentDetailPage: React.FC = () => {
                     </div>
                     <div>
                       <div className="text-xs font-heading font-black uppercase tracking-wider text-amber-400">
-                        SQUAD ALLOCATED: {roomAccess.roundName} (SLOT #{roomAccess.slotNumber})
+                        SQUAD ALLOCATED: {activeRoundData.roundName} (SLOT #{activeRoundData.slotNumber})
                       </div>
                       <p className="text-xs text-gray-300 font-mono mt-1">
-                        Your squad is selected for {roomAccess.roundName}. Room ID and password are kept hidden until the tournament admin publishes them before match kick-off.
+                        Your squad is selected for {activeRoundData.roundName}. Room ID and password are kept hidden until the tournament admin publishes them before match kick-off.
                       </p>
                     </div>
                   </div>
                   <span className="px-3.5 py-1.5 rounded-xl text-xs font-heading font-bold uppercase tracking-wider bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0">
-                    SLOT #{roomAccess.slotNumber} RESERVED
+                    SLOT #{activeRoundData.slotNumber} RESERVED
                   </span>
                 </div>
               ) : null}

@@ -3206,7 +3206,7 @@ export const getRounds = async (req: Request, res: Response, next: NextFunction)
             include: { team: true },
           },
         },
-        orderBy: { roundNumber: "asc" },
+        orderBy: [{ roundNumber: "asc" }, { createdAt: "asc" }],
       });
     } catch (e) {
       console.warn("Prisma getRounds fallback to memory:", e);
@@ -3215,7 +3215,10 @@ export const getRounds = async (req: Request, res: Response, next: NextFunction)
     if (!rounds || rounds.length === 0) {
       rounds = memoryRounds
         .filter((r) => r.tournamentId === id)
-        .sort((a, b) => a.roundNumber - b.roundNumber)
+        .sort((a, b) => {
+          if (a.roundNumber !== b.roundNumber) return a.roundNumber - b.roundNumber;
+          return (a.name || "").localeCompare(b.name || "");
+        })
         .map((r) => {
           const rTeams = memoryRoundTeams
             .filter((rt) => rt.roundId === r.id)
@@ -3323,6 +3326,306 @@ export const createRound = async (req: AuthenticatedRequest, res: Response, next
       success: true,
       data: parseRoundWithCredentials(createdRound),
       message: "Round created successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/tournaments/:id/rounds/batch-divisions
+ * Create multiple divisions for a round stage at once (e.g. Round 1 Div A, B, C or Round 2 Div A, B)
+ */
+export const createBatchDivisions = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const {
+      stageName,
+      roundNumber,
+      divisionNames,
+      maxTeamsPerDivision = 12,
+      roundType = "BATTLE_ROYALE",
+      startDate,
+      startTime,
+      map = "BERMUDA",
+    } = req.body;
+
+    if (!Array.isArray(divisionNames) || divisionNames.length === 0) {
+      res.status(400).json({ success: false, message: "divisionNames array is required" });
+      return;
+    }
+
+    const rNum = roundNumber ? Number(roundNumber) : 1;
+    const baseStage = stageName ? stageName.trim().toUpperCase() : `ROUND ${rNum}`;
+
+    const createdDivisions: any[] = [];
+
+    for (const div of divisionNames) {
+      const cleanDiv = String(div).trim().toUpperCase();
+      const fullName = cleanDiv.startsWith(baseStage) ? cleanDiv : `${baseStage} - ${cleanDiv}`;
+
+      const metadata = {
+        description: `Free Fire Battle Royale - ${fullName} (12 Squads Max Lobby)`,
+        roomId: "",
+        roomPassword: "",
+        map: map || "BERMUDA",
+        roomTime: startTime || "",
+        credentialsPublished: false,
+        customNotes: "Free Fire Custom Lobby limit: 12 squads max. Join your assigned slot strictly.",
+      };
+
+      const roundData = {
+        name: fullName,
+        roundNumber: rNum,
+        roundType: roundType || "BATTLE_ROYALE",
+        startDate: startDate || null,
+        startTime: startTime || null,
+        description: JSON.stringify(metadata),
+        maxTeams: maxTeamsPerDivision ? Number(maxTeamsPerDivision) : 12,
+        selectionMethod: "MANUAL",
+        status: "UPCOMING",
+      };
+
+      let roundEntity: any = null;
+      try {
+        roundEntity = await (prisma as any).tournamentRound.create({
+          data: {
+            ...roundData,
+            tournamentId: id,
+          },
+          include: { roundTeams: true },
+        });
+      } catch (e) {
+        console.warn("Prisma createBatchDivisions fallback to memory:", e);
+      }
+
+      if (!roundEntity) {
+        roundEntity = {
+          id: `round-${id}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          tournamentId: id,
+          ...roundData,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          roundTeams: [],
+        };
+        memoryRounds.push(roundEntity);
+      }
+
+      createdDivisions.push(parseRoundWithCredentials(roundEntity));
+    }
+
+    res.status(201).json({
+      success: true,
+      data: createdDivisions,
+      message: `Successfully created ${createdDivisions.length} divisions for ${baseStage}`,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/tournaments/:id/rounds/auto-distribute
+ * Automatically distribute squads into multiple divisions (12 squads max per division)
+ */
+export const autoDistributeSquads = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { roundIds, capacityPerDivision = 12 } = req.body;
+
+    if (!Array.isArray(roundIds) || roundIds.length === 0) {
+      res.status(400).json({ success: false, message: "roundIds array is required" });
+      return;
+    }
+
+    // 1. Fetch target rounds
+    let targetRounds: any[] = [];
+    try {
+      targetRounds = await (prisma as any).tournamentRound.findMany({
+        where: { id: { in: roundIds }, tournamentId: id },
+        include: {
+          roundTeams: { include: { team: true } },
+        },
+        orderBy: [{ roundNumber: "asc" }, { createdAt: "asc" }],
+      });
+    } catch (e) {}
+
+    if (!targetRounds || targetRounds.length === 0) {
+      targetRounds = memoryRounds.filter((r) => roundIds.includes(r.id) && r.tournamentId === id);
+    }
+
+    if (targetRounds.length === 0) {
+      res.status(404).json({ success: false, message: "Target division rounds not found" });
+      return;
+    }
+
+    // 2. Fetch confirmed registrations
+    let regs: any[] = [];
+    try {
+      regs = await prisma.tournamentRegistration.findMany({
+        where: {
+          tournamentId: id,
+          OR: [
+            { status: "CONFIRMED" },
+            { status: "APPROVED" },
+            { status: "PENDING" },
+            { paymentStatus: "VERIFIED" },
+            { paymentStatus: "PAID" },
+            { paymentStatus: "UNDER_REVIEW" },
+          ],
+        },
+        include: { team: true },
+      });
+    } catch (e) {}
+
+    if (!regs || regs.length === 0) {
+      regs = memoryRegistrations.filter((r) => r.tournamentId === id);
+    }
+
+    // Default leader for team creation
+    let defaultUserId: string | null = (req as any).user?.id || null;
+    if (!defaultUserId) {
+      const u = await prisma.user.findFirst();
+      defaultUserId = u?.id || null;
+    }
+
+    // 3. Find candidate squads
+    const roundNumber = targetRounds[0].roundNumber || 1;
+    let candidateTeamIds: string[] = [];
+
+    // Track teams already assigned to any division of this stage
+    const assignedInStage = new Set<string>();
+    for (const tr of targetRounds) {
+      for (const rt of tr.roundTeams || []) {
+        assignedInStage.add(rt.teamId);
+      }
+    }
+
+    if (roundNumber === 1) {
+      candidateTeamIds = regs
+        .map((r) => r.teamId || r.id)
+        .filter((tId) => !assignedInStage.has(tId));
+    } else {
+      // Prior rounds qualified squads
+      let allPriorRounds: any[] = [];
+      try {
+        allPriorRounds = await (prisma as any).tournamentRound.findMany({
+          where: { tournamentId: id, roundNumber: { lt: roundNumber } },
+          include: { roundTeams: true },
+        });
+      } catch (e) {}
+
+      if (!allPriorRounds || allPriorRounds.length === 0) {
+        allPriorRounds = memoryRounds.filter((r) => r.tournamentId === id && r.roundNumber < roundNumber);
+      }
+
+      const qualifiedPrior: string[] = [];
+      for (const pr of allPriorRounds) {
+        for (const rt of pr.roundTeams || []) {
+          if (rt.status === "QUALIFIED" || rt.status === "ADVANCED") {
+            qualifiedPrior.push(rt.teamId);
+          }
+        }
+      }
+
+      candidateTeamIds = qualifiedPrior.filter((tId) => !assignedInStage.has(tId));
+      if (candidateTeamIds.length === 0) {
+        candidateTeamIds = regs
+          .map((r) => r.teamId || r.id)
+          .filter((tId) => !assignedInStage.has(tId));
+      }
+    }
+
+    // 4. Distribute candidate squads into target rounds (up to capacityPerDivision)
+    let candidateIndex = 0;
+    let totalAssigned = 0;
+
+    for (const r of targetRounds) {
+      const currentTeams = r.roundTeams || [];
+      let nextSlot = currentTeams.length + 1;
+      const needed = Math.max(0, capacityPerDivision - currentTeams.length);
+
+      for (let i = 0; i < needed && candidateIndex < candidateTeamIds.length; i++) {
+        const rawId = candidateTeamIds[candidateIndex++];
+        const reg = regs.find((regItem) => regItem.id === rawId || regItem.teamId === rawId || regItem.teamName === rawId);
+        let targetTeamId = rawId;
+
+        if (reg && reg.teamId) {
+          targetTeamId = reg.teamId;
+        } else if (reg && !reg.teamId) {
+          let team = await prisma.team.findFirst({ where: { tournamentId: id, teamName: reg.teamName } });
+          if (!team && defaultUserId) {
+            try {
+              team = await prisma.team.create({
+                data: {
+                  tournamentId: id,
+                  teamName: reg.teamName,
+                  leaderId: reg.submittedById || defaultUserId,
+                  status: "CONFIRMED",
+                },
+              });
+              await prisma.tournamentRegistration.update({
+                where: { id: reg.id },
+                data: { teamId: team.id },
+              });
+            } catch (err) {}
+          }
+          if (team) {
+            targetTeamId = team.id;
+          }
+        }
+
+        try {
+          await (prisma as any).roundTeam.upsert({
+            where: {
+              roundId_teamId: {
+                roundId: r.id,
+                teamId: targetTeamId,
+              },
+            },
+            update: {
+              status: "QUALIFIED",
+              seed: nextSlot,
+            },
+            create: {
+              roundId: r.id,
+              teamId: targetTeamId,
+              status: "QUALIFIED",
+              seed: nextSlot,
+              score: 0,
+            },
+          });
+        } catch (e) {
+          console.warn("autoDistribute upsert error:", e);
+        }
+
+        const memRt = memoryRoundTeams.find((rt) => rt.roundId === r.id && rt.teamId === targetTeamId);
+        if (memRt) {
+          memRt.status = "QUALIFIED";
+          memRt.seed = nextSlot;
+        } else {
+          memoryRoundTeams.push({
+            id: `rt-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            roundId: r.id,
+            teamId: targetTeamId,
+            teamName: reg ? reg.teamName : targetTeamId,
+            status: "QUALIFIED",
+            seed: nextSlot,
+            score: 0,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+        }
+
+        nextSlot++;
+        totalAssigned++;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Auto-distributed ${totalAssigned} squads across ${targetRounds.length} division(s)`,
+      totalAssigned,
     });
   } catch (error) {
     next(error);
@@ -3494,6 +3797,29 @@ export const getEligibleTeamsForRound = async (req: Request, res: Response, next
     }
 
     // 2. Track squad assignments across all rounds
+    // 2. Track squad assignments across all rounds and specifically within the same stage
+    const sameStageRounds = rounds.filter((r) => r.roundNumber === currentRound.roundNumber);
+    const stageDivisions = sameStageRounds.map((r) => ({
+      id: r.id,
+      name: r.name,
+      teamCount: (r.roundTeams || []).length,
+      maxTeams: r.maxTeams || 12,
+    }));
+
+    const siblingDivisionMap: Record<string, string> = {};
+    for (const sr of sameStageRounds) {
+      if (sr.id !== roundId && sr.roundTeams) {
+        for (const rt of sr.roundTeams) {
+          siblingDivisionMap[rt.teamId] = sr.name;
+          const reg = regs.find((regItem) => regItem.teamId === rt.teamId || regItem.id === rt.teamId);
+          if (reg) {
+            siblingDivisionMap[reg.id] = sr.name;
+            if (reg.teamId) siblingDivisionMap[reg.teamId] = sr.name;
+          }
+        }
+      }
+    }
+
     const teamAssignmentMap: Record<string, string> = {};
     for (const r of rounds) {
       if (r.roundTeams) {
@@ -3529,6 +3855,7 @@ export const getEligibleTeamsForRound = async (req: Request, res: Response, next
       eligibleTeams = regs.map((r) => {
         const teamKey = r.teamId || r.id;
         const assignedRound = teamAssignmentMap[teamKey] || teamAssignmentMap[r.id];
+        const siblingRound = siblingDivisionMap[teamKey] || siblingDivisionMap[r.id];
         const isSelected =
           currentRoundTeamIds.includes(teamKey) ||
           currentRoundTeamIds.includes(r.id) ||
@@ -3544,6 +3871,9 @@ export const getEligibleTeamsForRound = async (req: Request, res: Response, next
           paymentStatus: r.paymentStatus,
           alreadySelected: Boolean(isSelected),
           assignedRoundName: assignedRound || null,
+          isAssignedToOtherDivisionInStage: Boolean(siblingRound),
+          otherDivisionName: siblingRound || null,
+          isUnassignedInStage: !isSelected && !siblingRound,
           previousRoundStatus: "CONFIRMED_REGISTRATION",
           previousRoundName: "Registrations",
         };
@@ -3556,6 +3886,8 @@ export const getEligibleTeamsForRound = async (req: Request, res: Response, next
           if (rt.status === "QUALIFIED" || rt.status === "ADVANCED") {
             const reg = regs.find((r) => r.teamId === rt.teamId || r.id === rt.teamId || r.teamName === rt.team?.teamName);
             const isSelected = currentRoundTeamIds.includes(rt.teamId);
+            const siblingRound = siblingDivisionMap[rt.teamId] || (reg ? siblingDivisionMap[reg.id] : null);
+
             qualifiedTeamsFromPrior.push({
               id: rt.teamId,
               teamId: rt.teamId,
@@ -3565,6 +3897,9 @@ export const getEligibleTeamsForRound = async (req: Request, res: Response, next
               score: rt.score || 0,
               alreadySelected: Boolean(isSelected),
               assignedRoundName: teamAssignmentMap[rt.teamId] || null,
+              isAssignedToOtherDivisionInStage: Boolean(siblingRound),
+              otherDivisionName: siblingRound || null,
+              isUnassignedInStage: !isSelected && !siblingRound,
               previousRoundStatus: rt.status,
               previousRoundName: pRound.name,
               isQualifiedFromPrior: true,
@@ -3580,6 +3915,7 @@ export const getEligibleTeamsForRound = async (req: Request, res: Response, next
         .map((r) => {
           const teamKey = r.teamId || r.id;
           const assignedRound = teamAssignmentMap[teamKey] || teamAssignmentMap[r.id];
+          const siblingRound = siblingDivisionMap[teamKey] || siblingDivisionMap[r.id];
           const isSelected =
             currentRoundTeamIds.includes(teamKey) ||
             currentRoundTeamIds.includes(r.id) ||
@@ -3595,6 +3931,9 @@ export const getEligibleTeamsForRound = async (req: Request, res: Response, next
             paymentStatus: r.paymentStatus,
             alreadySelected: Boolean(isSelected),
             assignedRoundName: assignedRound || null,
+            isAssignedToOtherDivisionInStage: Boolean(siblingRound),
+            otherDivisionName: siblingRound || null,
+            isUnassignedInStage: !isSelected && !siblingRound,
             previousRoundStatus: "DIRECT_REGISTRATION",
             previousRoundName: "All Squads",
             isQualifiedFromPrior: false,
@@ -3604,7 +3943,12 @@ export const getEligibleTeamsForRound = async (req: Request, res: Response, next
       eligibleTeams = [...qualifiedTeamsFromPrior, ...otherRegs];
     }
 
-    res.json({ success: true, data: eligibleTeams, round: parseRoundWithCredentials(currentRound) });
+    res.json({
+      success: true,
+      data: eligibleTeams,
+      round: parseRoundWithCredentials(currentRound),
+      stageDivisions,
+    });
   } catch (error) {
     next(error);
   }
@@ -4040,13 +4384,42 @@ export const getMyRoomAccess = async (req: AuthenticatedRequest, res: Response, 
       return;
     }
 
-    // Sort by roundNumber descending to inspect latest round
-    teamRoundEntries.sort((a, b) => b.round.roundNumber - a.round.roundNumber);
+    // Sort by roundNumber descending to inspect latest round; prioritize active/non-eliminated if same round
+    teamRoundEntries.sort((a, b) => {
+      if (b.round.roundNumber !== a.round.roundNumber) {
+        return b.round.roundNumber - a.round.roundNumber;
+      }
+      const aElim = a.roundTeam.status === "ELIMINATED" || a.roundTeam.status === "DISQUALIFIED";
+      const bElim = b.roundTeam.status === "ELIMINATED" || b.roundTeam.status === "DISQUALIFIED";
+      if (aElim && !bElim) return 1;
+      if (!aElim && bElim) return -1;
+      return new Date(b.round.updatedAt || 0).getTime() - new Date(a.round.updatedAt || 0).getTime();
+    });
+
+    const allAssignedRounds = teamRoundEntries.map((entry) => {
+      const parsed = parseRoundWithCredentials(entry.round);
+      const isPub = Boolean(parsed.credentialsPublished);
+      return {
+        roundId: parsed.id,
+        roundName: parsed.name,
+        roundNumber: parsed.roundNumber,
+        slotNumber: entry.roundTeam.seed || 1,
+        teamStatus: entry.roundTeam.status,
+        isEliminated: entry.roundTeam.status === "ELIMINATED" || entry.roundTeam.status === "DISQUALIFIED",
+        isPublished: isPub,
+        roomId: isPub ? parsed.roomId : "",
+        roomPassword: isPub ? parsed.roomPassword : "",
+        map: parsed.map || "BERMUDA",
+        roomTime: parsed.roomTime || parsed.startTime || "",
+        notes: parsed.customNotes || "",
+      };
+    });
+
     const latest = teamRoundEntries[0];
     const latestRound = parseRoundWithCredentials(latest.round);
     const latestRoundTeam = latest.roundTeam;
 
-    // Check if team is ELIMINATED
+    // Check if team is ELIMINATED in latest round
     if (latestRoundTeam.status === "ELIMINATED" || latestRoundTeam.status === "DISQUALIFIED") {
       res.json({
         success: true,
@@ -4057,6 +4430,7 @@ export const getMyRoomAccess = async (req: AuthenticatedRequest, res: Response, 
           isEliminated: true,
           status: "ELIMINATED",
           eliminatedRound: latestRound.name,
+          allAssignedRounds,
           message: `Tournament Ended - Eliminated in ${latestRound.name}`,
         },
       });
@@ -4085,6 +4459,7 @@ export const getMyRoomAccess = async (req: AuthenticatedRequest, res: Response, 
           roomTime: latestRound.roomTime || latestRound.startTime,
           notes: latestRound.customNotes,
           teamStatus: latestRoundTeam.status,
+          allAssignedRounds,
           message: `Room credentials published! Join Slot #${slotNumber} in Free Fire.`,
         },
       });
@@ -4104,6 +4479,7 @@ export const getMyRoomAccess = async (req: AuthenticatedRequest, res: Response, 
           map: latestRound.map || "BERMUDA",
           roomTime: latestRound.roomTime || latestRound.startTime,
           teamStatus: latestRoundTeam.status,
+          allAssignedRounds,
           message: `You are scheduled for ${latestRound.name} (Slot #${slotNumber}). Credentials unlock 15 minutes before match.`,
         },
       });

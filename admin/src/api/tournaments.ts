@@ -257,6 +257,38 @@ export const tournamentsApi = {
     });
   },
 
+  createBatchDivisions: async (
+    tournamentId: string,
+    data: {
+      stageName: string;
+      roundNumber: number;
+      divisionNames: string[];
+      maxTeamsPerDivision?: number;
+      roundType?: string;
+      startDate?: string;
+      startTime?: string;
+      map?: string;
+    }
+  ): Promise<{ success: boolean; data: TournamentRound[]; message: string }> => {
+    return apiRequest(`/tournaments/${tournamentId}/rounds/batch-divisions`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  autoDistributeSquads: async (
+    tournamentId: string,
+    data: {
+      roundIds: string[];
+      capacityPerDivision?: number;
+    }
+  ): Promise<{ success: boolean; message: string; totalAssigned: number }> => {
+    return apiRequest(`/tournaments/${tournamentId}/rounds/auto-distribute`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
   updateRound: async (tournamentId: string, roundId: string, round: Partial<TournamentRound>): Promise<TournamentRound> => {
     return apiRequest<TournamentRound>(`/tournaments/${tournamentId}/rounds/${roundId}`, {
       method: "PUT",
@@ -273,7 +305,7 @@ export const tournamentsApi = {
   getEligibleTeamsForRound: async (
     tournamentId: string,
     roundId: string
-  ): Promise<{ success: boolean; data: any[]; round: any }> => {
+  ): Promise<{ success: boolean; data: any[]; round: any; stageDivisions?: any[] }> => {
     return apiRequest(`/tournaments/${tournamentId}/rounds/${roundId}/eligible-teams`, { method: "GET" });
   },
 

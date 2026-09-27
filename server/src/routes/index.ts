@@ -198,6 +198,18 @@ router.post(
   requireRole("SUPER_ADMIN", "TOURNAMENT_ADMIN"),
   tournamentCtrl.createRound
 );
+router.post(
+  "/tournaments/:id/rounds/batch-divisions",
+  authenticate,
+  requireRole("SUPER_ADMIN", "TOURNAMENT_ADMIN"),
+  tournamentCtrl.createBatchDivisions
+);
+router.post(
+  "/tournaments/:id/rounds/auto-distribute",
+  authenticate,
+  requireRole("SUPER_ADMIN", "TOURNAMENT_ADMIN"),
+  tournamentCtrl.autoDistributeSquads
+);
 router.put(
   "/tournaments/:id/rounds/:roundId",
   authenticate,

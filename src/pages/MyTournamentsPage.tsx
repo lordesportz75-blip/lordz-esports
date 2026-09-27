@@ -177,6 +177,7 @@ export const MyTournamentsPage: React.FC = () => {
   };
 
   const [roomAccessByTournament, setRoomAccessByTournament] = useState<Record<string, any>>({});
+  const [selectedRoundByTournament, setSelectedRoundByTournament] = useState<Record<string, string>>({});
 
   const fetchRoomAccess = async (tournamentsList: any[]) => {
     const map: Record<string, any> = {};
@@ -806,135 +807,206 @@ export const MyTournamentsPage: React.FC = () => {
                         {/* Room Credentials & Match Contender Module */}
                         {(() => {
                           const roomAccess = roomAccessByTournament[tournament.id];
-
-                          if (roomAccess?.isEliminated) {
+                          if (!roomAccess) {
                             return (
-                              <div className="p-4 rounded-xl bg-red-950/40 border-2 border-red-500/50 space-y-2 text-center">
-                                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/20 text-red-400 font-heading font-black text-xs uppercase tracking-wider border border-red-500/30">
-                                  <AlertCircle className="w-3.5 h-3.5" />
-                                  <span>TOURNAMENT ENDED</span>
-                                </div>
-                                <p className="font-heading font-bold text-white text-xs uppercase">
-                                  Eliminated in {roomAccess.eliminatedRound || "Round 1"}
-                                </p>
-                                <p className="text-[11px] text-gray-300 font-body leading-relaxed">
-                                  Your squad did not qualify for the next round. Thank you for participating in LORD ESPORTZ!
-                                </p>
-                              </div>
-                            );
-                          }
-
-                          if (roomAccess?.hasAccess) {
-                            return (
-                              <div className="p-4 rounded-xl bg-gradient-to-b from-[#FFBE32]/15 via-black/80 to-black border-2 border-[#FFBE32]/60 shadow-[0_0_25px_rgba(255,190,50,0.15)] space-y-3">
-                                <div className="flex items-center justify-between pb-1 border-b border-white/10">
-                                  <div className="flex items-center gap-1.5 text-[#FFBE32] font-heading font-black text-xs uppercase tracking-wider">
-                                    <Key className="w-3.5 h-3.5" />
-                                    <span>{roomAccess.roundName}</span>
-                                  </div>
-                                  <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-mono text-[9px] font-bold uppercase animate-pulse">
-                                    ROOM LIVE ✓
-                                  </span>
-                                </div>
-
-                                <div className="p-2 rounded-lg bg-black/80 border border-[#FFBE32]/40 flex items-center justify-between text-xs font-mono">
-                                  <span className="text-gray-400 uppercase text-[10px]">ASSIGNED SQUAD SLOT:</span>
-                                  <span className="px-2 py-0.5 rounded bg-[#FFBE32] text-black font-black text-xs font-mono">
-                                    SLOT #{roomAccess.slotNumber}
-                                  </span>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-                                  <div className="bg-white/5 p-2 rounded-lg border border-white/10 space-y-1">
-                                    <span className="text-gray-400 text-[9px] uppercase block">ROOM ID:</span>
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-white font-bold text-sm tracking-wider">{roomAccess.roomId}</span>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleCopy(`room_${tournament.id}`, roomAccess.roomId)}
-                                        className="p-1 rounded bg-[#FFBE32]/10 hover:bg-[#FFBE32] text-[#FFBE32] hover:text-black transition-colors cursor-pointer"
-                                        title="Copy Room ID"
-                                      >
-                                        {copiedKey === `room_${tournament.id}` ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                                      </button>
-                                    </div>
-                                  </div>
-
-                                  <div className="bg-white/5 p-2 rounded-lg border border-white/10 space-y-1">
-                                    <span className="text-gray-400 text-[9px] uppercase block">PASSWORD:</span>
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-white font-bold text-sm tracking-wider">{roomAccess.roomPassword}</span>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleCopy(`pass_${tournament.id}`, roomAccess.roomPassword)}
-                                        className="p-1 rounded bg-[#FFBE32]/10 hover:bg-[#FFBE32] text-[#FFBE32] hover:text-black transition-colors cursor-pointer"
-                                        title="Copy Password"
-                                      >
-                                        {copiedKey === `pass_${tournament.id}` ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <div className="flex items-center justify-between text-[10px] font-mono text-gray-300 pt-1 border-t border-white/10">
-                                  <span>MAP: <strong className="text-[#FFBE32] uppercase">{roomAccess.map || "BERMUDA"}</strong></span>
-                                  <span>TIME: <strong className="text-white">{roomAccess.roomTime || "AS SCHEDULED"}</strong></span>
-                                </div>
-
-                                {roomAccess.notes && (
-                                  <p className="text-[10px] font-mono text-gray-400 bg-white/5 p-1.5 rounded">
-                                    📌 {roomAccess.notes}
-                                  </p>
-                                )}
-                              </div>
-                            );
-                          }
-
-                          if (roomAccess && !roomAccess.hasAccess && roomAccess.roundName) {
-                            return (
-                              <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2">
+                              <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 space-y-3">
                                 <div className="flex items-center justify-between">
-                                  <span className="font-heading font-bold text-xs uppercase text-amber-300 flex items-center gap-1.5">
-                                    <Clock className="w-3.5 h-3.5" />
-                                    <span>{roomAccess.roundName}</span>
-                                  </span>
-                                  <span className="px-1.5 py-0.5 rounded bg-black/60 font-mono text-[9px] text-[#FFBE32] font-bold border border-[#FFBE32]/30">
-                                    SLOT #{roomAccess.slotNumber}
-                                  </span>
+                                  <p className="text-[10px] font-mono text-gray-400 uppercase">CUSTOM ROOM CREDENTIALS</p>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleLoadMatches(tournament.id)}
+                                    disabled={fetchingMatches[tournament.id]}
+                                    className="text-[10px] font-heading font-bold text-[#FFBE32] hover:underline uppercase flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <RefreshCw className={`w-3 h-3 ${fetchingMatches[tournament.id] ? "animate-spin" : ""}`} />
+                                    <span>{fetchingMatches[tournament.id] ? "Checking..." : "Refresh"}</span>
+                                  </button>
                                 </div>
-                                <p className="text-[11px] text-gray-300 leading-relaxed font-body">
-                                  Your squad is assigned to <strong>{roomAccess.roundName}</strong> at <strong>Slot #{roomAccess.slotNumber}</strong>. Map: {roomAccess.map || "BERMUDA"}.
-                                </p>
-                                <div className="p-2 rounded-lg bg-black/40 border border-white/5 text-[10px] font-mono text-[#FFBE32] text-center">
-                                  🔒 Room credentials reveal 15 minutes before the match start time.
+                                <div className="text-center py-2">
+                                  <p className="font-mono font-bold text-xs text-[#FFBE32] tracking-widest">
+                                    REVEALING 15 MINS BEFORE START
+                                  </p>
+                                  <p className="text-[10px] font-mono text-gray-400 mt-1">
+                                    Room credentials will be posted here and broadcasted before match lobby opens.
+                                  </p>
                                 </div>
                               </div>
                             );
+                          }
+
+                          // Derive selected round data if user has multiple rounds/divisions
+                          const selRoundId = selectedRoundByTournament[tournament.id] || roomAccess.roundId;
+                          let currentRound = roomAccess;
+                          if (roomAccess.allAssignedRounds?.length) {
+                            const found = roomAccess.allAssignedRounds.find((r: any) => r.roundId === selRoundId);
+                            if (found) {
+                              currentRound = {
+                                ...roomAccess,
+                                ...found,
+                                hasAccess: found.hasAccess ?? (found.status !== "ELIMINATED" && found.credentialsPublished),
+                                isEliminated: found.status === "ELIMINATED",
+                              };
+                            }
                           }
 
                           return (
-                            <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 space-y-3">
-                              <div className="flex items-center justify-between">
-                                <p className="text-[10px] font-mono text-gray-400 uppercase">CUSTOM ROOM CREDENTIALS</p>
-                                <button
-                                  type="button"
-                                  onClick={() => handleLoadMatches(tournament.id)}
-                                  disabled={fetchingMatches[tournament.id]}
-                                  className="text-[10px] font-heading font-bold text-[#FFBE32] hover:underline uppercase flex items-center gap-1 cursor-pointer"
-                                >
-                                  <RefreshCw className={`w-3 h-3 ${fetchingMatches[tournament.id] ? "animate-spin" : ""}`} />
-                                  <span>{fetchingMatches[tournament.id] ? "Checking..." : "Refresh"}</span>
-                                </button>
-                              </div>
+                            <div className="space-y-2">
+                              {/* Round / Division Selector Tabs if squad has multiple participations */}
+                              {roomAccess.allAssignedRounds && roomAccess.allAssignedRounds.length > 1 && (
+                                <div className="p-2 rounded-lg bg-black/60 border border-white/10 flex flex-wrap items-center gap-1">
+                                  <span className="text-[9px] font-mono text-gray-400 uppercase mr-1 font-bold">
+                                    DIVISION:
+                                  </span>
+                                  {roomAccess.allAssignedRounds.map((rnd: any) => {
+                                    const isSel = (selRoundId || roomAccess.roundId) === rnd.roundId;
+                                    const isElim = rnd.status === "ELIMINATED";
+                                    return (
+                                      <button
+                                        key={rnd.roundId}
+                                        type="button"
+                                        onClick={() =>
+                                          setSelectedRoundByTournament((prev) => ({
+                                            ...prev,
+                                            [tournament.id]: rnd.roundId,
+                                          }))
+                                        }
+                                        className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                                          isSel
+                                            ? "bg-[#FFBE32] text-black font-black"
+                                            : isElim
+                                            ? "bg-red-950/40 text-red-300 border border-red-500/20"
+                                            : "bg-white/10 text-gray-300 hover:bg-white/20"
+                                        }`}
+                                      >
+                                        <span>{rnd.roundName}</span>
+                                        {isElim ? (
+                                          <span className="text-[8px] text-red-300">✕</span>
+                                        ) : (
+                                          <span className="text-[8px] opacity-80">#{rnd.slotNumber}</span>
+                                        )}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
 
-                              <div className="text-center py-2">
-                                <p className="font-mono font-bold text-xs text-[#FFBE32] tracking-widest">
-                                  REVEALING 15 MINS BEFORE START
-                                </p>
-                                <p className="text-[10px] font-mono text-gray-400 mt-1">
-                                  Room credentials will be posted here and broadcasted before match lobby opens.
-                                </p>
-                              </div>
+                              {currentRound.isEliminated ? (
+                                <div className="p-4 rounded-xl bg-red-950/40 border-2 border-red-500/50 space-y-2 text-center">
+                                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/20 text-red-400 font-heading font-black text-xs uppercase tracking-wider border border-red-500/30">
+                                    <AlertCircle className="w-3.5 h-3.5" />
+                                    <span>STAGE CONCLUDED</span>
+                                  </div>
+                                  <p className="font-heading font-bold text-white text-xs uppercase">
+                                    {currentRound.roundName} — Eliminated
+                                  </p>
+                                  <p className="text-[11px] text-gray-300 font-body leading-relaxed">
+                                    Your squad did not qualify from {currentRound.roundName || "the previous round"}. Credentials for next stages are closed.
+                                  </p>
+                                </div>
+                              ) : currentRound.hasAccess ? (
+                                <div className="p-4 rounded-xl bg-gradient-to-b from-[#FFBE32]/15 via-black/80 to-black border-2 border-[#FFBE32]/60 shadow-[0_0_25px_rgba(255,190,50,0.15)] space-y-3">
+                                  <div className="flex items-center justify-between pb-1 border-b border-white/10">
+                                    <div className="flex items-center gap-1.5 text-[#FFBE32] font-heading font-black text-xs uppercase tracking-wider">
+                                      <Key className="w-3.5 h-3.5" />
+                                      <span>{currentRound.roundName}</span>
+                                    </div>
+                                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-mono text-[9px] font-bold uppercase animate-pulse">
+                                      ROOM LIVE ✓
+                                    </span>
+                                  </div>
+
+                                  <div className="p-2 rounded-lg bg-black/80 border border-[#FFBE32]/40 flex items-center justify-between text-xs font-mono">
+                                    <span className="text-gray-400 uppercase text-[10px]">ASSIGNED SQUAD SLOT:</span>
+                                    <span className="px-2 py-0.5 rounded bg-[#FFBE32] text-black font-black text-xs font-mono">
+                                      SLOT #{currentRound.slotNumber}
+                                    </span>
+                                  </div>
+
+                                  <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                                    <div className="bg-white/5 p-2 rounded-lg border border-white/10 space-y-1">
+                                      <span className="text-gray-400 text-[9px] uppercase block">ROOM ID:</span>
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-white font-bold text-sm tracking-wider">{currentRound.roomId}</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopy(`room_${tournament.id}`, currentRound.roomId)}
+                                          className="p-1 rounded bg-[#FFBE32]/10 hover:bg-[#FFBE32] text-[#FFBE32] hover:text-black transition-colors cursor-pointer"
+                                          title="Copy Room ID"
+                                        >
+                                          {copiedKey === `room_${tournament.id}` ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    <div className="bg-white/5 p-2 rounded-lg border border-white/10 space-y-1">
+                                      <span className="text-gray-400 text-[9px] uppercase block">PASSWORD:</span>
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-white font-bold text-sm tracking-wider">{currentRound.roomPassword}</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopy(`pass_${tournament.id}`, currentRound.roomPassword)}
+                                          className="p-1 rounded bg-[#FFBE32]/10 hover:bg-[#FFBE32] text-[#FFBE32] hover:text-black transition-colors cursor-pointer"
+                                          title="Copy Password"
+                                        >
+                                          {copiedKey === `pass_${tournament.id}` ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center justify-between text-[10px] font-mono text-gray-300 pt-1 border-t border-white/10">
+                                    <span>MAP: <strong className="text-[#FFBE32] uppercase">{currentRound.map || "BERMUDA"}</strong></span>
+                                    <span>TIME: <strong className="text-white">{currentRound.roomTime || "AS SCHEDULED"}</strong></span>
+                                  </div>
+
+                                  {currentRound.notes && (
+                                    <p className="text-[10px] font-mono text-gray-400 bg-white/5 p-1.5 rounded">
+                                      📌 {currentRound.notes}
+                                    </p>
+                                  )}
+                                </div>
+                              ) : currentRound.isRegistered && currentRound.roundName ? (
+                                <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-heading font-bold text-xs uppercase text-amber-300 flex items-center gap-1.5">
+                                      <Clock className="w-3.5 h-3.5" />
+                                      <span>{currentRound.roundName}</span>
+                                    </span>
+                                    <span className="px-1.5 py-0.5 rounded bg-black/60 font-mono text-[9px] text-[#FFBE32] font-bold border border-[#FFBE32]/30">
+                                      SLOT #{currentRound.slotNumber}
+                                    </span>
+                                  </div>
+                                  <p className="text-[11px] text-gray-300 leading-relaxed font-body">
+                                    Your squad is assigned to <strong>{currentRound.roundName}</strong> at <strong>Slot #{currentRound.slotNumber}</strong>. Map: {currentRound.map || "BERMUDA"}.
+                                  </p>
+                                  <div className="p-2 rounded-lg bg-black/40 border border-white/5 text-[10px] font-mono text-[#FFBE32] text-center">
+                                    🔒 Room credentials reveal 15 minutes before the match start time.
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <p className="text-[10px] font-mono text-gray-400 uppercase">CUSTOM ROOM CREDENTIALS</p>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleLoadMatches(tournament.id)}
+                                      disabled={fetchingMatches[tournament.id]}
+                                      className="text-[10px] font-heading font-bold text-[#FFBE32] hover:underline uppercase flex items-center gap-1 cursor-pointer"
+                                    >
+                                      <RefreshCw className={`w-3 h-3 ${fetchingMatches[tournament.id] ? "animate-spin" : ""}`} />
+                                      <span>{fetchingMatches[tournament.id] ? "Checking..." : "Refresh"}</span>
+                                    </button>
+                                  </div>
+                                  <div className="text-center py-2">
+                                    <p className="font-mono font-bold text-xs text-[#FFBE32] tracking-widest">
+                                      REVEALING 15 MINS BEFORE START
+                                    </p>
+                                    <p className="text-[10px] font-mono text-gray-400 mt-1">
+                                      Room credentials will be posted here and broadcasted before match lobby opens.
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           );
                         })()}

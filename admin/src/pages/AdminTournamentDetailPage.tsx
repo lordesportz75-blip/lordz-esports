@@ -42,6 +42,8 @@ import {
   Key,
   Lock,
   Edit,
+  Copy,
+  Sparkles,
 } from "lucide-react";
 
 type TabType =
@@ -77,15 +79,29 @@ export const AdminTournamentDetailPage: React.FC = () => {
   // Stages state
   const [stages, setStages] = useState<TournamentStage[]>([]);
 
-  // Rounds state
+  // Rounds & Divisions state
   const [rounds, setRounds] = useState<TournamentRound[]>([]);
   const [activeRoundId, setActiveRoundId] = useState<string>("");
+  const [selectedStageFilter, setSelectedStageFilter] = useState<number | "ALL">("ALL");
   const [newRoundModalOpen, setNewRoundModalOpen] = useState(false);
+  const [batchDivisionsModalOpen, setBatchDivisionsModalOpen] = useState(false);
+  const [autoDistributeLoading, setAutoDistributeLoading] = useState(false);
+  const [eligibleTabFilter, setEligibleTabFilter] = useState<"ALL" | "UNASSIGNED" | "OTHER_DIVISIONS">("ALL");
+  const [copiedCredentialsKey, setCopiedCredentialsKey] = useState<string | null>(null);
+
+  // Batch Division creator state
+  const [batchStageName, setBatchStageName] = useState("ROUND 1");
+  const [batchRoundNumber, setBatchRoundNumber] = useState(1);
+  const [batchDivisionsList, setBatchDivisionsList] = useState<string[]>(["DIVISION A", "DIVISION B", "DIVISION C"]);
+  const [batchCreating, setBatchCreating] = useState(false);
+
   const [newRoundData, setNewRoundData] = useState({
-    name: "",
+    name: "ROUND 1 - DIVISION A",
+    roundStage: "ROUND 1",
+    divisionLetter: "DIVISION A",
     roundNumber: 1,
     roundType: "BATTLE_ROYALE",
-    maxTeams: 32,
+    maxTeams: 12,
     selectionMethod: "MANUAL",
     startDate: "",
     startTime: "",
@@ -508,16 +524,20 @@ export const AdminTournamentDetailPage: React.FC = () => {
     try {
       const created = await tournamentsApi.createRound(tournamentId, {
         ...newRoundData,
-        roundNumber: Number(newRoundData.roundNumber) || rounds.length + 1,
+        maxTeams: Number(newRoundData.maxTeams) || 12,
+        roundNumber: Number(newRoundData.roundNumber) || 1,
       });
       setRounds((prev) => [...prev, created]);
       setActiveRoundId(created.id);
+      setSelectedStageFilter(created.roundNumber);
       setNewRoundModalOpen(false);
       setNewRoundData({
-        name: "",
-        roundNumber: rounds.length + 2,
+        name: "ROUND 1 - DIVISION A",
+        roundStage: "ROUND 1",
+        divisionLetter: "DIVISION A",
+        roundNumber: 1,
         roundType: "BATTLE_ROYALE",
-        maxTeams: 32,
+        maxTeams: 12,
         selectionMethod: "MANUAL",
         startDate: "",
         startTime: "",
@@ -526,6 +546,87 @@ export const AdminTournamentDetailPage: React.FC = () => {
     } catch (err: any) {
       alert(err.message || "Failed to create round");
     }
+  };
+
+  const handleCreateBatchDivisions = async () => {
+    if (!tournamentId || batchDivisionsList.length === 0) return;
+    setBatchCreating(true);
+    try {
+      const res = await tournamentsApi.createBatchDivisions(tournamentId, {
+        stageName: batchStageName,
+        roundNumber: Number(batchRoundNumber) || 1,
+        divisionNames: batchDivisionsList,
+        maxTeamsPerDivision: 12,
+        roundType: "BATTLE_ROYALE",
+      });
+      if (res?.success) {
+        const updated = await tournamentsApi.getRounds(tournamentId);
+        if (updated && updated.length > 0) {
+          setRounds(updated);
+          setActiveRoundId(updated[0].id);
+          setSelectedStageFilter(Number(batchRoundNumber) || 1);
+        }
+        setBatchDivisionsModalOpen(false);
+        alert(`Successfully created ${batchDivisionsList.length} divisions for ${batchStageName}!`);
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to create divisions");
+    } finally {
+      setBatchCreating(false);
+    }
+  };
+
+  const handleAutoDistributeSquads = async (stageRoundNumber: number) => {
+    if (!tournamentId) return;
+    const stageRounds = rounds.filter((r) => r.roundNumber === stageRoundNumber);
+    if (stageRounds.length === 0) {
+      alert("No divisions found for this stage. Please create divisions first.");
+      return;
+    }
+
+    const divisionNames = stageRounds.map((r) => r.name).join(", ");
+    if (
+      !window.confirm(
+        `Auto-split unassigned squads into ${stageRounds.length} division(s) (${divisionNames})?\n\nMaximum 12 squads per custom match lobby.`
+      )
+    ) {
+      return;
+    }
+
+    setAutoDistributeLoading(true);
+    try {
+      const res = await tournamentsApi.autoDistributeSquads(tournamentId, {
+        roundIds: stageRounds.map((r) => r.id),
+        capacityPerDivision: 12,
+      });
+      if (res?.success) {
+        const updated = await tournamentsApi.getRounds(tournamentId);
+        if (updated && updated.length > 0) setRounds(updated);
+        alert(res.message || "Squads successfully distributed across divisions!");
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to auto-distribute squads");
+    } finally {
+      setAutoDistributeLoading(false);
+    }
+  };
+
+  const handleCopyAnnouncement = (round: any) => {
+    const text = `🎮 LORD ESPORTZ • FREE FIRE CUSTOM MATCH
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+🏆 TOURNAMENT: ${tournament?.title || "LORD ESPORTZ"}
+📌 ROUND / DIVISION: ${round.name}
+🔢 FREE FIRE LOBBY SLOTS: 1 to 12
+🔑 ROOM ID: ${roomForm.roomId || "Will be shared before match"}
+🔒 PASSWORD: ${roomForm.roomPassword || "None"}
+🗺️ MAP: ${roomForm.map || "BERMUDA"}
+⏰ MATCH TIME: ${roomForm.roomTime || "See Schedule"}
+📝 NOTE: ${roomForm.customNotes || "Strictly join your assigned Slot # (1 to 12). Non-assigned slot players will be kicked."}
+━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+
+    navigator.clipboard.writeText(text);
+    setCopiedCredentialsKey(round.id);
+    setTimeout(() => setCopiedCredentialsKey(null), 3000);
   };
 
   const handleDeleteRound = async (roundId: string) => {
@@ -541,8 +642,6 @@ export const AdminTournamentDetailPage: React.FC = () => {
       alert(err.message || "Failed to delete round");
     }
   };
-
-
 
   const handleSaveRoomCredentials = async () => {
     if (!tournamentId || !activeRoundId) return;
@@ -566,6 +665,7 @@ export const AdminTournamentDetailPage: React.FC = () => {
     setActiveRoundId(roundId);
     setEligibleLoading(true);
     setEligibleModalOpen(true);
+    setEligibleTabFilter("ALL");
     try {
       const res = await tournamentsApi.getEligibleTeamsForRound(tournamentId, roundId);
       if (res && res.data && res.data.length > 0) {
@@ -589,6 +689,9 @@ export const AdminTournamentDetailPage: React.FC = () => {
             paymentStatus: r.paymentStatus,
             alreadySelected: Boolean(isSelected),
             assignedRoundName: null,
+            isAssignedToOtherDivisionInStage: false,
+            otherDivisionName: null,
+            isUnassignedInStage: !isSelected,
             previousRoundStatus: "CONFIRMED_REGISTRATION",
             previousRoundName: "All Registrations",
           };
@@ -613,6 +716,9 @@ export const AdminTournamentDetailPage: React.FC = () => {
           paymentStatus: r.paymentStatus,
           alreadySelected: Boolean(isSelected),
           assignedRoundName: null,
+          isAssignedToOtherDivisionInStage: false,
+          otherDivisionName: null,
+          isUnassignedInStage: !isSelected,
           previousRoundStatus: "CONFIRMED_REGISTRATION",
           previousRoundName: "All Registrations",
         };
@@ -1948,6 +2054,7 @@ export const AdminTournamentDetailPage: React.FC = () => {
       )}
 
       {/* ================= TAB 4: ROUNDS & TEAM PROGRESSION ================= */}
+      {/* ================= TAB 4: ROUNDS & TEAM PROGRESSION ================= */}
       {activeTab === "STAGES" && (
         <div className="space-y-6">
           {/* Header Bar */}
@@ -1955,19 +2062,42 @@ export const AdminTournamentDetailPage: React.FC = () => {
             <div>
               <h2 className="font-heading text-lg font-bold uppercase tracking-wider text-white flex items-center gap-2">
                 <Trophy className="h-5 w-5 text-[#FFBE32]" />
-                Tournament Rounds &amp; Progression Engine
+                Tournament Rounds &amp; Divisions Engine
               </h2>
               <p className="text-xs text-gray-400 font-body mt-1">
-                Configure tournament rounds (Round 1, Round 2, Semi Finals, Grand Finals), select qualified squads, advance teams between stages, and record match scores.
+                Free Fire Custom Rooms cap at 12 squads per match. Create multiple divisions (Div A, Div B, Div C) for Round 1 &amp; Round 2, auto-distribute squads, manage independent room credentials, and advance qualified squads.
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2.5">
               <button
-                onClick={() => setNewRoundModalOpen(true)}
+                type="button"
+                onClick={() => setBatchDivisionsModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-heading font-bold text-xs uppercase tracking-wider cursor-pointer border border-white/10 hover:border-[#FFBE32]/40 transition-all"
+              >
+                <Sparkles className="h-4 w-4 text-[#FFBE32]" /> Quick Setup Divisions
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const maxRoundNum = rounds.length > 0 ? Math.max(...rounds.map((r) => r.roundNumber)) : 1;
+                  setNewRoundData({
+                    name: `ROUND ${maxRoundNum} - DIVISION A`,
+                    roundStage: `ROUND ${maxRoundNum}`,
+                    divisionLetter: "DIVISION A",
+                    roundNumber: maxRoundNum,
+                    roundType: "BATTLE_ROYALE",
+                    maxTeams: 12,
+                    selectionMethod: "MANUAL",
+                    startDate: "",
+                    startTime: "",
+                    description: "",
+                  });
+                  setNewRoundModalOpen(true);
+                }}
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#FFBE32] hover:bg-[#FFA000] text-black font-heading font-bold text-xs uppercase tracking-wider cursor-pointer shadow-[0_0_15px_rgba(255,190,50,0.2)] transition-all"
               >
-                <Plus className="h-4 w-4" /> Add Round
+                <Plus className="h-4 w-4" /> Add Division / Round
               </button>
             </div>
           </div>
@@ -1978,69 +2108,204 @@ export const AdminTournamentDetailPage: React.FC = () => {
                 <Trophy className="h-8 w-8" />
               </div>
               <div className="max-w-md mx-auto space-y-1">
-                <h3 className="font-display text-xl text-white uppercase">No Rounds Configured Yet</h3>
+                <h3 className="font-display text-xl text-white uppercase">No Rounds or Divisions Configured</h3>
                 <p className="text-xs text-gray-400 font-body">
-                  Initialize tournament stages starting with Round 1 to select confirmed squads and track qualification.
+                  For Free Fire tournaments (32, 24, or 48 squads), set up multiple divisions (A, B, C) where each custom room has a 12-squad limit.
                 </p>
               </div>
-              <button
-                onClick={() => setNewRoundModalOpen(true)}
-                className="px-5 py-2.5 rounded-xl bg-[#FFBE32] hover:bg-[#FFA000] text-black font-heading font-bold text-xs uppercase tracking-wider cursor-pointer shadow-[0_0_15px_rgba(255,190,50,0.2)] inline-flex items-center gap-2"
-              >
-                <Plus className="h-4 w-4" /> Create Round 1
-              </button>
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    setBatchStageName("ROUND 1");
+                    setBatchRoundNumber(1);
+                    setBatchDivisionsList(["DIVISION A", "DIVISION B", "DIVISION C"]);
+                    setBatchDivisionsModalOpen(true);
+                  }}
+                  className="px-5 py-2.5 rounded-xl bg-[#FFBE32] hover:bg-[#FFA000] text-black font-heading font-bold text-xs uppercase tracking-wider cursor-pointer shadow-[0_0_15px_rgba(255,190,50,0.2)] inline-flex items-center gap-2"
+                >
+                  <Sparkles className="h-4 w-4" /> Quick Setup 32-Squad Divisions (A, B, C)
+                </button>
+                <button
+                  onClick={() => setNewRoundModalOpen(true)}
+                  className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-heading font-bold text-xs uppercase tracking-wider cursor-pointer border border-white/10 inline-flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" /> Create Single Custom Division
+                </button>
+              </div>
             </div>
           ) : (
-            <div className="space-y-6">
-              {/* Round Selector Ribbon */}
-              <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
-                {rounds.map((round) => {
-                  const isActive = activeRoundId === round.id;
-                  const roundTeamCount = (round.roundTeams || []).length;
-                  return (
+            <div className="space-y-4">
+              {/* Stage Filter Selector */}
+              {(() => {
+                const uniqueStageNumbers = Array.from(new Set(rounds.map((r) => r.roundNumber))).sort((a, b) => a - b);
+                return (
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
                     <button
-                      key={round.id}
-                      onClick={() => setActiveRoundId(round.id)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-all cursor-pointer whitespace-nowrap shrink-0 text-left ${
-                        isActive
-                          ? "bg-[#FFBE32]/10 border-[#FFBE32] shadow-[0_0_15px_rgba(255,190,50,0.2)]"
-                          : "bg-[#0C0C0E] border-white/10 hover:border-white/20 text-gray-400 hover:text-white"
+                      type="button"
+                      onClick={() => setSelectedStageFilter("ALL")}
+                      className={`px-3.5 py-2 rounded-xl text-xs font-heading font-bold uppercase transition-all cursor-pointer whitespace-nowrap border ${
+                        selectedStageFilter === "ALL"
+                          ? "bg-[#FFBE32] text-black border-[#FFBE32] shadow-[0_0_12px_rgba(255,190,50,0.3)]"
+                          : "bg-black/50 text-gray-400 border-white/10 hover:border-white/20 hover:text-white"
                       }`}
                     >
-                      <span
-                        className={`flex h-7 w-7 items-center justify-center rounded-lg font-heading font-bold text-xs ${
-                          isActive
-                            ? "bg-[#FFBE32] text-black"
-                            : "bg-white/10 text-gray-300"
-                        }`}
-                      >
-                        {round.roundNumber}
-                      </span>
-                      <div>
-                        <div className={`font-display text-sm uppercase ${isActive ? "text-white" : "text-gray-300"}`}>
-                          {round.name}
-                        </div>
-                        <div className="text-[10px] font-mono text-gray-400">
-                          {roundTeamCount} / {round.maxTeams} Teams •{" "}
+                      All Divisions ({rounds.length})
+                    </button>
+                    {uniqueStageNumbers.map((sNum) => {
+                      const stageRounds = rounds.filter((r) => r.roundNumber === sNum);
+                      const totalSquads = stageRounds.reduce((acc, r) => acc + (r.roundTeams?.length || 0), 0);
+                      const isSelected = selectedStageFilter === sNum;
+                      return (
+                        <button
+                          key={sNum}
+                          type="button"
+                          onClick={() => {
+                            setSelectedStageFilter(sNum);
+                            const firstInStage = stageRounds[0];
+                            if (firstInStage) setActiveRoundId(firstInStage.id);
+                          }}
+                          className={`px-3.5 py-2 rounded-xl text-xs font-heading font-bold uppercase transition-all cursor-pointer whitespace-nowrap border flex items-center gap-2 ${
+                            isSelected
+                              ? "bg-[#FFBE32] text-black border-[#FFBE32] shadow-[0_0_12px_rgba(255,190,50,0.3)]"
+                              : "bg-black/50 text-gray-400 border-white/10 hover:border-white/20 hover:text-white"
+                          }`}
+                        >
+                          <span>ROUND {sNum}</span>
                           <span
-                            className={`uppercase font-bold ${
-                              round.status === "ONGOING"
-                                ? "text-rose-400"
-                                : round.status === "COMPLETED"
-                                ? "text-emerald-400"
-                                : "text-amber-400"
+                            className={`px-1.5 py-0.2 rounded text-[10px] font-mono ${
+                              isSelected ? "bg-black/20 text-black font-black" : "bg-white/10 text-gray-300"
                             }`}
                           >
-                            {round.status}
+                            {stageRounds.length} Divs • {totalSquads} Squads
                           </span>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
 
-              {/* Active Round Card */}
+              {/* Division Selector Ribbon */}
+              {(() => {
+                const visibleRounds =
+                  selectedStageFilter === "ALL"
+                    ? rounds
+                    : rounds.filter((r) => r.roundNumber === selectedStageFilter);
+
+                const currentStageNum =
+                  selectedStageFilter === "ALL"
+                    ? (rounds.find((r) => r.id === activeRoundId)?.roundNumber || 1)
+                    : selectedStageFilter;
+
+                return (
+                  <div className="p-3.5 rounded-2xl bg-black/40 border border-white/10 space-y-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-white/5 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-heading font-bold uppercase text-gray-400">
+                          {selectedStageFilter === "ALL" ? "All Configured Divisions" : `Round ${selectedStageFilter} Divisions`}:
+                        </span>
+                        <span className="text-[10px] font-mono text-[#FFBE32]">
+                          ({visibleRounds.length} custom match lobbies)
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={autoDistributeLoading}
+                          onClick={() => handleAutoDistributeSquads(currentStageNum)}
+                          className="px-2.5 py-1 rounded-lg bg-[#FFBE32]/10 hover:bg-[#FFBE32] text-[#FFBE32] hover:text-black border border-[#FFBE32]/30 text-[10px] font-heading font-bold uppercase cursor-pointer transition-all inline-flex items-center gap-1 disabled:opacity-50"
+                          title="Evenly distribute confirmed squads into these divisions (12 squads max each)"
+                        >
+                          <Sparkles className="h-3 w-3" />
+                          <span>{autoDistributeLoading ? "Distributing..." : `Auto-Split Squads into Round ${currentStageNum}`}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewRoundData({
+                              name: `ROUND ${currentStageNum} - DIVISION ${String.fromCharCode(65 + visibleRounds.length)}`,
+                              roundStage: `ROUND ${currentStageNum}`,
+                              divisionLetter: `DIVISION ${String.fromCharCode(65 + visibleRounds.length)}`,
+                              roundNumber: currentStageNum,
+                              roundType: "BATTLE_ROYALE",
+                              maxTeams: 12,
+                              selectionMethod: "MANUAL",
+                              startDate: "",
+                              startTime: "",
+                              description: "",
+                            });
+                            setNewRoundModalOpen(true);
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white border border-white/10 text-[10px] font-heading font-bold uppercase cursor-pointer inline-flex items-center gap-1"
+                        >
+                          <Plus className="h-3 w-3" /> Add Division
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 overflow-x-auto pb-1 scrollbar-none">
+                      {visibleRounds.map((round) => {
+                        const isActive = activeRoundId === round.id;
+                        const roundTeamCount = (round.roundTeams || []).length;
+                        const isPublished = Boolean(round.credentialsPublished);
+
+                        return (
+                          <button
+                            key={round.id}
+                            type="button"
+                            onClick={() => setActiveRoundId(round.id)}
+                            className={`flex flex-col gap-1 px-3.5 py-2.5 rounded-xl border transition-all cursor-pointer whitespace-nowrap shrink-0 text-left ${
+                              isActive
+                                ? "bg-[#FFBE32]/15 border-[#FFBE32] shadow-[0_0_15px_rgba(255,190,50,0.25)]"
+                                : "bg-[#0C0C0E] border-white/10 hover:border-white/20 text-gray-400 hover:text-white"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className={`font-display text-sm uppercase ${isActive ? "text-white" : "text-gray-300"}`}>
+                                {round.name}
+                              </span>
+                              <span
+                                className={`px-1.5 py-0.2 rounded text-[9px] font-mono font-bold uppercase ${
+                                  roundTeamCount >= (round.maxTeams || 12)
+                                    ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                                    : "bg-white/10 text-gray-300"
+                                }`}
+                              >
+                                {roundTeamCount}/{round.maxTeams || 12}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-2 text-[10px] font-mono">
+                              <span
+                                className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                                  isPublished
+                                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                    : "bg-white/5 text-gray-400 border border-white/10"
+                                }`}
+                              >
+                                {isPublished ? `✓ Room: ${round.roomId || "Live"}` : "🔒 Room Draft"}
+                              </span>
+                              <span
+                                className={`uppercase font-bold ${
+                                  round.status === "ONGOING"
+                                    ? "text-rose-400"
+                                    : round.status === "COMPLETED"
+                                    ? "text-emerald-400"
+                                    : "text-amber-400"
+                                }`}
+                              >
+                                {round.status}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Active Round / Division Card */}
               {(() => {
                 const currentRound = rounds.find((r) => r.id === activeRoundId) || rounds[0];
                 if (!currentRound) return null;
@@ -2070,11 +2335,11 @@ export const AdminTournamentDetailPage: React.FC = () => {
                               {currentRound.roundType.replace("_", " ")}
                             </span>
                             <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-[#FFBE32]/10 text-[#FFBE32] border border-[#FFBE32]/30">
-                              {currentRound.selectionMethod}
+                              LOBBY: {roundTeams.length} / {currentRound.maxTeams || 12} SQUADS MAX
                             </span>
                           </div>
                           <p className="text-xs text-gray-400 font-body mt-0.5">
-                            {currentRound.description || "Tournament qualification bracket stage"}
+                            {currentRound.description || "Tournament qualification bracket division"}
                             {currentRound.startDate && ` • Starts: ${currentRound.startDate} ${currentRound.startTime || ""}`}
                           </p>
                         </div>
@@ -2106,7 +2371,7 @@ export const AdminTournamentDetailPage: React.FC = () => {
                           className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-heading font-bold text-xs uppercase tracking-wider cursor-pointer transition-all inline-flex items-center gap-1.5"
                         >
                           <Users className="h-3.5 w-3.5 text-[#FFBE32]" />
-                          Select Teams ({roundTeams.length}/{currentRound.maxTeams})
+                          Select Squads ({roundTeams.length}/{currentRound.maxTeams || 12})
                         </button>
 
                         {selectedAdvanceTeamIds.length > 0 && (
@@ -2121,7 +2386,7 @@ export const AdminTournamentDetailPage: React.FC = () => {
 
                         <button
                           onClick={() => handleDeleteRound(currentRound.id)}
-                          title="Delete Round"
+                          title="Delete this division"
                           className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 cursor-pointer"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -2144,12 +2409,22 @@ export const AdminTournamentDetailPage: React.FC = () => {
                               </span>
                             </h4>
                             <p className="text-[11px] text-gray-400 font-body">
-                              Set Room ID & Password. Only squads selected in this round will see these credentials.
+                              Separate credentials for {currentRound.name}. Only squads assigned to this division will see these credentials.
                             </p>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-2.5">
+                          <button
+                            type="button"
+                            onClick={() => handleCopyAnnouncement(currentRound)}
+                            className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-heading font-bold text-xs uppercase tracking-wider transition-all cursor-pointer inline-flex items-center gap-1.5 border border-white/15"
+                            title="Copy match credentials formatted for WhatsApp / Discord announcement"
+                          >
+                            <Copy className="h-3.5 w-3.5 text-[#FFBE32]" />
+                            <span>{copiedCredentialsKey === currentRound.id ? "✓ Copied to Clipboard!" : "Copy Announcement"}</span>
+                          </button>
+
                           <span
                             className={`px-2.5 py-1 rounded-full text-[10px] font-mono font-bold uppercase border flex items-center gap-1.5 ${
                               roomForm.credentialsPublished
@@ -2251,7 +2526,7 @@ export const AdminTournamentDetailPage: React.FC = () => {
 
                       <div>
                         <label className="block text-gray-400 font-heading font-bold uppercase tracking-wider mb-1 text-[10px]">
-                          Custom Notes / Lobby Instructions for Squads
+                          Custom Notes / Instructions for Squads in {currentRound.name}
                         </label>
                         <input
                           type="text"
@@ -2288,7 +2563,7 @@ export const AdminTournamentDetailPage: React.FC = () => {
                               <th className="py-3 px-3 w-24">SLOT #</th>
                               <th className="py-3 px-4">TEAM NAME</th>
                               <th className="py-3 px-3">CAPTAIN / LEADER</th>
-                              <th className="py-3 px-3">STATUS IN ROUND</th>
+                              <th className="py-3 px-3">STATUS IN DIVISION</th>
                               <th className="py-3 px-3">SCORE / PTS</th>
                               <th className="py-3 px-4 text-right">ACTIONS</th>
                             </tr>
@@ -2309,7 +2584,7 @@ export const AdminTournamentDetailPage: React.FC = () => {
                                       type="checkbox"
                                       checked={isChecked}
                                       disabled={isEliminated}
-                                      title={isEliminated ? "Eliminated or disqualified squads cannot be advanced" : undefined}
+                                      title={isEliminated ? "Eliminated squads cannot be advanced" : undefined}
                                       onChange={(e) => {
                                         if (isEliminated) return;
                                         if (e.target.checked) {
@@ -2396,7 +2671,7 @@ export const AdminTournamentDetailPage: React.FC = () => {
                         </table>
                       ) : (
                         <div className="py-12 text-center text-xs text-gray-500 font-mono space-y-2">
-                          <p>No squads currently selected for {currentRound.name}.</p>
+                          <p>No squads currently assigned to {currentRound.name}.</p>
                           <button
                             onClick={() => handleOpenSelectTeams(currentRound.id)}
                             className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-heading font-bold text-xs uppercase tracking-wider cursor-pointer"
@@ -2412,14 +2687,14 @@ export const AdminTournamentDetailPage: React.FC = () => {
             </div>
           )}
 
-          {/* ================= MODAL: CREATE ROUND ================= */}
+          {/* ================= MODAL: CREATE ROUND / DIVISION ================= */}
           {newRoundModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4">
-              <div className="w-full max-w-lg rounded-2xl border border-white/15 bg-[#0D0D12] p-6 shadow-2xl space-y-4">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 overflow-y-auto">
+              <div className="w-full max-w-xl rounded-2xl border border-white/15 bg-[#0D0D12] p-6 shadow-2xl space-y-4 my-8">
                 <div className="flex items-center justify-between pb-3 border-b border-white/10">
                   <h3 className="font-display text-xl uppercase text-white flex items-center gap-2">
                     <Trophy className="h-5 w-5 text-[#FFBE32]" />
-                    Create Tournament Round
+                    Create Tournament Round / Division
                   </h3>
                   <button
                     onClick={() => setNewRoundModalOpen(false)}
@@ -2430,17 +2705,18 @@ export const AdminTournamentDetailPage: React.FC = () => {
                 </div>
 
                 <form onSubmit={handleCreateRound} className="space-y-4 text-xs">
-                  {/* Quick Preset Buttons */}
+                  {/* Quick Format Presets */}
                   <div>
                     <span className="text-gray-400 font-heading font-bold uppercase text-[10px] block mb-1.5">
-                      Quick Group / Round Presets (12 Squads per Room):
+                      Quick Group / Division Presets (12 Squads per Room):
                     </span>
                     <div className="flex flex-wrap gap-1.5">
                       {[
-                        "ROUND 1 - GROUP A",
-                        "ROUND 1 - GROUP B",
-                        "ROUND 1 - GROUP C",
-                        "ROUND 2",
+                        "ROUND 1 - DIVISION A",
+                        "ROUND 1 - DIVISION B",
+                        "ROUND 1 - DIVISION C",
+                        "ROUND 2 - DIVISION A",
+                        "ROUND 2 - DIVISION B",
                         "SEMI FINALS",
                         "GRAND FINALS",
                       ].map((preset) => (
@@ -2464,23 +2740,107 @@ export const AdminTournamentDetailPage: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* Interactive Stage & Division Pickers */}
+                  <div className="p-3 rounded-xl bg-white/[0.02] border border-white/10 space-y-2.5">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-gray-400 block mb-1">
+                        1. Select Stage:
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          { label: "Round 1", num: 1 },
+                          { label: "Round 2", num: 2 },
+                          { label: "Round 3", num: 3 },
+                          { label: "Semi Finals", num: 4 },
+                          { label: "Grand Finals", num: 5 },
+                        ].map((stage) => {
+                          const isSel = newRoundData.roundNumber === stage.num;
+                          return (
+                            <button
+                              key={stage.num}
+                              type="button"
+                              onClick={() => {
+                                const stagePrefix = stage.label.toUpperCase();
+                                const currentDiv = newRoundData.divisionLetter || "DIVISION A";
+                                const updatedName = currentDiv === "SINGLE" ? stagePrefix : `${stagePrefix} - ${currentDiv}`;
+                                setNewRoundData((prev) => ({
+                                  ...prev,
+                                  roundStage: stagePrefix,
+                                  roundNumber: stage.num,
+                                  name: updatedName,
+                                }));
+                              }}
+                              className={`px-2.5 py-1 rounded-lg text-[10px] font-heading font-bold uppercase border cursor-pointer transition-all ${
+                                isSel
+                                  ? "bg-[#FFBE32] text-black border-[#FFBE32]"
+                                  : "bg-black/40 text-gray-300 border-white/10 hover:border-white/20"
+                              }`}
+                            >
+                              {stage.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-gray-400 block mb-1">
+                        2. Select Division / Lobby:
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          { label: "Division A", code: "DIVISION A" },
+                          { label: "Division B", code: "DIVISION B" },
+                          { label: "Division C", code: "DIVISION C" },
+                          { label: "Division D", code: "DIVISION D" },
+                          { label: "Single Room (No Div)", code: "SINGLE" },
+                        ].map((div) => {
+                          const isSel = newRoundData.divisionLetter === div.code;
+                          return (
+                            <button
+                              key={div.code}
+                              type="button"
+                              onClick={() => {
+                                const stagePrefix = newRoundData.roundStage || "ROUND 1";
+                                const updatedName = div.code === "SINGLE" ? stagePrefix : `${stagePrefix} - ${div.code}`;
+                                setNewRoundData((prev) => ({
+                                  ...prev,
+                                  divisionLetter: div.code,
+                                  name: updatedName,
+                                  maxTeams: 12,
+                                }));
+                              }}
+                              className={`px-2.5 py-1 rounded-lg text-[10px] font-heading font-bold uppercase border cursor-pointer transition-all ${
+                                isSel
+                                  ? "bg-[#FFBE32] text-black border-[#FFBE32]"
+                                  : "bg-black/40 text-gray-300 border-white/10 hover:border-white/20"
+                              }`}
+                            >
+                              {div.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-gray-300 font-heading font-bold uppercase tracking-wider mb-1">
-                        Round Name
+                        Round / Division Name
                       </label>
                       <input
                         type="text"
                         required
                         value={newRoundData.name}
                         onChange={(e) => setNewRoundData({ ...newRoundData, name: e.target.value })}
-                        placeholder="e.g. ROUND 1 - GROUP A"
+                        placeholder="e.g. ROUND 1 - DIVISION A"
                         className="w-full px-3 py-2 rounded-xl bg-black/60 border border-white/15 text-white font-heading font-bold uppercase focus:border-[#FFBE32] focus:outline-none"
                       />
                     </div>
                     <div>
                       <label className="block text-gray-300 font-heading font-bold uppercase tracking-wider mb-1">
-                        Round Number
+                        Round Stage Number
                       </label>
                       <input
                         type="number"
@@ -2568,32 +2928,254 @@ export const AdminTournamentDetailPage: React.FC = () => {
                       rows={2}
                       value={newRoundData.description}
                       onChange={(e) => setNewRoundData({ ...newRoundData, description: e.target.value })}
-                      placeholder="e.g. Opening battle royale bracket with 32 teams. Top 16 qualify for Round 2."
+                      placeholder="e.g. Opening battle royale bracket with 12 squads per custom room. Top 6 qualify for Round 2."
                       className="w-full px-3 py-2 rounded-xl bg-black/60 border border-white/15 text-white font-mono focus:border-[#FFBE32] focus:outline-none"
                     />
                   </div>
 
-                  <div className="flex justify-end gap-3 pt-3 border-t border-white/10">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-white/10">
                     <button
                       type="button"
-                      onClick={() => setNewRoundModalOpen(false)}
-                      className="px-4 py-2 rounded-xl border border-white/10 text-gray-400 hover:text-white font-heading font-bold uppercase tracking-wider text-xs"
+                      onClick={() => {
+                        setNewRoundModalOpen(false);
+                        setBatchDivisionsModalOpen(true);
+                      }}
+                      className="text-[11px] text-[#FFBE32] hover:underline font-heading font-bold uppercase text-left"
                     >
-                      Cancel
+                      ⚡ Create Multiple Divisions at Once &rarr;
                     </button>
-                    <button
-                      type="submit"
-                      className="px-5 py-2 rounded-xl bg-[#FFBE32] hover:bg-[#FFA000] text-black font-heading font-bold uppercase tracking-wider text-xs shadow-[0_0_15px_rgba(255,190,50,0.3)]"
-                    >
-                      Create Round
-                    </button>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setNewRoundModalOpen(false)}
+                        className="px-4 py-2 rounded-xl border border-white/10 text-gray-400 hover:text-white font-heading font-bold uppercase tracking-wider text-xs"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-5 py-2 rounded-xl bg-[#FFBE32] hover:bg-[#FFA000] text-black font-heading font-bold uppercase tracking-wider text-xs shadow-[0_0_15px_rgba(255,190,50,0.3)] cursor-pointer"
+                      >
+                        Create Division
+                      </button>
+                    </div>
                   </div>
                 </form>
               </div>
             </div>
           )}
 
-          {/* ================= MODAL: SELECT ELIGIBLE TEAMS ================= */}
+          {/* ================= MODAL: BATCH CREATE DIVISIONS ================= */}
+          {batchDivisionsModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 overflow-y-auto">
+              <div className="w-full max-w-xl rounded-2xl border border-white/15 bg-[#0D0D12] p-6 shadow-2xl space-y-4 my-8">
+                <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                  <h3 className="font-display text-xl uppercase text-white flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-[#FFBE32]" />
+                    Quick Setup Round Divisions
+                  </h3>
+                  <button
+                    onClick={() => setBatchDivisionsModalOpen(false)}
+                    className="p-1 rounded-lg text-gray-400 hover:text-white"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-4 text-xs">
+                  <p className="text-gray-400 font-body">
+                    Because Free Fire custom matches support a maximum of <strong>12 squads per lobby</strong>, create all divisions for your stage in one click.
+                  </p>
+
+                  {/* Format Preset Buttons */}
+                  <div>
+                    <span className="text-gray-300 font-heading font-bold uppercase text-[10px] block mb-1.5">
+                      Tournament Opening &amp; Stage Presets:
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBatchStageName("ROUND 1");
+                          setBatchRoundNumber(1);
+                          setBatchDivisionsList(["DIVISION A", "DIVISION B", "DIVISION C"]);
+                        }}
+                        className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${
+                          batchRoundNumber === 1 && batchDivisionsList.length === 3
+                            ? "bg-[#FFBE32]/15 border-[#FFBE32] text-white"
+                            : "bg-black/40 border-white/10 text-gray-300 hover:border-white/20"
+                        }`}
+                      >
+                        <div className="font-heading font-bold uppercase text-xs text-[#FFBE32]">
+                          Round 1: 32 Squads (3 Divs)
+                        </div>
+                        <div className="text-[11px] text-gray-400 mt-0.5">
+                          Creates Division A (12), Division B (12), Division C (8)
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBatchStageName("ROUND 2");
+                          setBatchRoundNumber(2);
+                          setBatchDivisionsList(["DIVISION A", "DIVISION B"]);
+                        }}
+                        className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${
+                          batchRoundNumber === 2 && batchDivisionsList.length === 2
+                            ? "bg-[#FFBE32]/15 border-[#FFBE32] text-white"
+                            : "bg-black/40 border-white/10 text-gray-300 hover:border-white/20"
+                        }`}
+                      >
+                        <div className="font-heading font-bold uppercase text-xs text-[#FFBE32]">
+                          Round 2: 24 Squads (2 Divs)
+                        </div>
+                        <div className="text-[11px] text-gray-400 mt-0.5">
+                          Creates Division A (12) &amp; Division B (12)
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBatchStageName("ROUND 1");
+                          setBatchRoundNumber(1);
+                          setBatchDivisionsList(["DIVISION A", "DIVISION B", "DIVISION C", "DIVISION D"]);
+                        }}
+                        className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${
+                          batchRoundNumber === 1 && batchDivisionsList.length === 4
+                            ? "bg-[#FFBE32]/15 border-[#FFBE32] text-white"
+                            : "bg-black/40 border-white/10 text-gray-300 hover:border-white/20"
+                        }`}
+                      >
+                        <div className="font-heading font-bold uppercase text-xs text-[#FFBE32]">
+                          Mega 48 Squads (4 Divs)
+                        </div>
+                        <div className="text-[11px] text-gray-400 mt-0.5">
+                          Creates Division A, B, C, D (12 each)
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBatchStageName("GRAND FINALS");
+                          setBatchRoundNumber(3);
+                          setBatchDivisionsList(["FINALS ROOM"]);
+                        }}
+                        className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${
+                          batchDivisionsList.length === 1
+                            ? "bg-[#FFBE32]/15 border-[#FFBE32] text-white"
+                            : "bg-black/40 border-white/10 text-gray-300 hover:border-white/20"
+                        }`}
+                      >
+                        <div className="font-heading font-bold uppercase text-xs text-[#FFBE32]">
+                          Grand Finals (1 Room)
+                        </div>
+                        <div className="text-[11px] text-gray-400 mt-0.5">
+                          Top 12 qualified squads championship
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <label className="block text-gray-300 font-heading font-bold uppercase tracking-wider mb-1">
+                        Stage Name
+                      </label>
+                      <input
+                        type="text"
+                        value={batchStageName}
+                        onChange={(e) => setBatchStageName(e.target.value.toUpperCase())}
+                        placeholder="e.g. ROUND 1"
+                        className="w-full px-3 py-2 rounded-xl bg-black/60 border border-white/15 text-white font-heading font-bold uppercase focus:border-[#FFBE32] focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-300 font-heading font-bold uppercase tracking-wider mb-1">
+                        Round Stage Number
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={batchRoundNumber}
+                        onChange={(e) => setBatchRoundNumber(parseInt(e.target.value) || 1)}
+                        className="w-full px-3 py-2 rounded-xl bg-black/60 border border-white/15 text-white font-mono focus:border-[#FFBE32] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Divisions to generate */}
+                  <div>
+                    <label className="block text-gray-300 font-heading font-bold uppercase tracking-wider mb-1">
+                      Divisions to Generate (12 Squads Each):
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {["DIVISION A", "DIVISION B", "DIVISION C", "DIVISION D", "DIVISION E", "DIVISION F"].map((div) => {
+                        const isIncluded = batchDivisionsList.includes(div);
+                        return (
+                          <button
+                            key={div}
+                            type="button"
+                            onClick={() => {
+                              if (isIncluded) {
+                                setBatchDivisionsList(batchDivisionsList.filter((d) => d !== div));
+                              } else {
+                                setBatchDivisionsList([...batchDivisionsList, div]);
+                              }
+                            }}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-heading font-bold uppercase border cursor-pointer transition-all ${
+                              isIncluded
+                                ? "bg-[#FFBE32] text-black border-[#FFBE32] shadow-[0_0_10px_rgba(255,190,50,0.3)]"
+                                : "bg-black/50 text-gray-400 border-white/10 hover:border-white/20"
+                            }`}
+                          >
+                            {isIncluded ? `✓ ${div}` : `+ ${div}`}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Summary preview */}
+                  <div className="p-3 rounded-xl bg-[#FFBE32]/10 border border-[#FFBE32]/30 text-xs font-mono text-gray-300 space-y-1">
+                    <div className="text-white font-bold flex items-center gap-1.5">
+                      <Check className="h-4 w-4 text-[#FFBE32]" />
+                      <span>Ready to create {batchDivisionsList.length} divisions for {batchStageName}:</span>
+                    </div>
+                    <p className="text-[11px] text-gray-400 pl-5">
+                      {batchDivisionsList.map((d) => `${batchStageName} - ${d}`).join(" • ")}
+                    </p>
+                    <p className="text-[10px] text-amber-300 pl-5">
+                      Total capacity: {batchDivisionsList.length * 12} squads (12 squads max per Free Fire lobby).
+                    </p>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-3 border-t border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => setBatchDivisionsModalOpen(false)}
+                      className="px-4 py-2 rounded-xl border border-white/10 text-gray-400 hover:text-white font-heading font-bold uppercase tracking-wider text-xs"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={batchCreating || batchDivisionsList.length === 0}
+                      onClick={handleCreateBatchDivisions}
+                      className="px-5 py-2 rounded-xl bg-[#FFBE32] hover:bg-[#FFA000] text-black font-heading font-bold uppercase tracking-wider text-xs shadow-[0_0_15px_rgba(255,190,50,0.3)] cursor-pointer disabled:opacity-50"
+                    >
+                      {batchCreating ? "Generating Divisions..." : `Create ${batchDivisionsList.length} Divisions Now`}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ================= MODAL: SELECT ELIGIBLE SQUADS ================= */}
           {eligibleModalOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4">
               <div className="w-full max-w-2xl rounded-2xl border border-white/15 bg-[#0D0D12] p-6 shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
@@ -2603,9 +3185,7 @@ export const AdminTournamentDetailPage: React.FC = () => {
                       Select Squads for {rounds.find((r) => r.id === activeRoundId)?.name}
                     </h3>
                     <p className="text-xs text-gray-400 font-body">
-                      {rounds.find((r) => r.id === activeRoundId)?.roundNumber === 1
-                        ? "Eligibility: Confirmed & Paid tournament registrations."
-                        : "Eligibility: Squads qualified or advanced from the previous round."}
+                      Free Fire Room Limit: Exactly 12 squads per match. Unassigned squads are highlighted below.
                     </p>
                   </div>
                   <button
@@ -2618,7 +3198,7 @@ export const AdminTournamentDetailPage: React.FC = () => {
 
                 {eligibleLoading ? (
                   <div className="py-16 text-center text-gray-400 font-mono text-xs animate-pulse">
-                    Evaluating eligible squads...
+                    Evaluating eligible squads and room divisions...
                   </div>
                 ) : eligibleTeams.length === 0 ? (
                   <div className="py-12 text-center text-xs text-gray-500 font-mono space-y-2">
@@ -2630,108 +3210,169 @@ export const AdminTournamentDetailPage: React.FC = () => {
                   </div>
                 ) : (
                   <>
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between py-1 shrink-0 text-xs font-heading gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-300 font-bold">
-                          {selectedEligibleIds.length} of {eligibleTeams.length} squads selected
-                        </span>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#FFBE32]/10 text-[#FFBE32] border border-[#FFBE32]/30">
-                          Room Capacity: {selectedEligibleIds.length}/12 Squads
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedEligibleIds(eligibleTeams.slice(0, 12).map((t) => t.teamId || t.id))}
-                          className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold uppercase cursor-pointer"
-                        >
-                          Select 12 (Max)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedEligibleIds(eligibleTeams.map((t) => t.teamId || t.id))}
-                          className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 text-[11px] font-bold uppercase cursor-pointer"
-                        >
-                          Select All
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedEligibleIds([])}
-                          className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 text-[11px] font-bold uppercase cursor-pointer"
-                        >
-                          Clear
-                        </button>
-                      </div>
-                    </div>
+                    {/* Filter Tabs for Easy Division Separation */}
+                    {(() => {
+                      const unassignedList = eligibleTeams.filter((t) => t.isUnassignedInStage || (!t.alreadySelected && !t.isAssignedToOtherDivisionInStage));
+                      const otherDivList = eligibleTeams.filter((t) => t.isAssignedToOtherDivisionInStage);
 
-                    {selectedEligibleIds.length > 12 && (
-                      <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] font-mono flex items-center gap-2">
-                        <AlertTriangle className="h-4 w-4 shrink-0" />
-                        <span>Warning: Free Fire custom rooms support 12 squads max (48 players).</span>
-                      </div>
-                    )}
+                      const displayedTeams =
+                        eligibleTabFilter === "UNASSIGNED"
+                          ? unassignedList
+                          : eligibleTabFilter === "OTHER_DIVISIONS"
+                          ? otherDivList
+                          : eligibleTeams;
 
-                    <div className="flex-1 overflow-y-auto rounded-xl border border-white/10 bg-black/40 divide-y divide-white/5">
-                      {eligibleTeams.map((team) => {
-                        const tId = team.teamId || team.id;
-                        const isChecked = selectedEligibleIds.includes(tId);
-                        return (
-                          <label
-                            key={tId}
-                            className={`p-3 flex items-center justify-between gap-3 cursor-pointer hover:bg-white/[0.02] transition-colors ${
-                              isChecked ? "bg-[#FFBE32]/5" : ""
-                            }`}
-                          >
-                            <div className="flex items-center gap-3">
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSelectedEligibleIds((prev) => [...prev, tId]);
-                                  } else {
-                                    setSelectedEligibleIds((prev) => prev.filter((id) => id !== tId));
-                                  }
-                                }}
-                                className="cursor-pointer"
-                              />
-                              <div>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-heading font-bold text-white text-sm uppercase">
-                                    {team.teamName}
-                                  </span>
-                                  {team.assignedRoundName && (
-                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-blue-500/15 text-blue-300 border border-blue-500/30">
-                                      Assigned: {team.assignedRoundName}
-                                    </span>
-                                  )}
-                                </div>
-                                <span className="text-[11px] text-gray-400 font-mono">
-                                  Captain: {team.captainName} {team.captainPhone ? `• ${team.captainPhone}` : ""}
-                                </span>
-                              </div>
-                            </div>
+                      return (
+                        <>
+                          <div className="flex items-center gap-2 border-b border-white/10 pb-2 text-xs font-heading shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => setEligibleTabFilter("ALL")}
+                              className={`px-3 py-1 rounded-lg font-bold uppercase transition-all cursor-pointer ${
+                                eligibleTabFilter === "ALL"
+                                  ? "bg-white/15 text-white"
+                                  : "text-gray-400 hover:text-white"
+                              }`}
+                            >
+                              All Squads ({eligibleTeams.length})
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEligibleTabFilter("UNASSIGNED")}
+                              className={`px-3 py-1 rounded-lg font-bold uppercase transition-all cursor-pointer flex items-center gap-1.5 ${
+                                eligibleTabFilter === "UNASSIGNED"
+                                  ? "bg-[#FFBE32] text-black font-black"
+                                  : "text-[#FFBE32] hover:bg-[#FFBE32]/10"
+                              }`}
+                            >
+                              <Sparkles className="h-3 w-3" />
+                              <span>Unassigned ({unassignedList.length})</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEligibleTabFilter("OTHER_DIVISIONS")}
+                              className={`px-3 py-1 rounded-lg font-bold uppercase transition-all cursor-pointer ${
+                                eligibleTabFilter === "OTHER_DIVISIONS"
+                                  ? "bg-blue-500/20 text-blue-300 border border-blue-500/30"
+                                  : "text-gray-400 hover:text-white"
+                              }`}
+                            >
+                              In Other Divisions ({otherDivList.length})
+                            </button>
+                          </div>
 
-                            <div className="flex items-center gap-3 text-right">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between py-1 shrink-0 text-xs font-heading gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-gray-300 font-bold">
+                                {selectedEligibleIds.length} squads selected
+                              </span>
                               <span
-                                className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                                  team.status === "APPROVED" || team.status === "CONFIRMED" || team.status === "QUALIFIED"
-                                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
-                                    : "bg-amber-500/10 text-amber-400 border border-amber-500/30"
+                                className={`text-[10px] font-mono px-2 py-0.5 rounded border font-bold ${
+                                  selectedEligibleIds.length === 12
+                                    ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                    : selectedEligibleIds.length > 12
+                                    ? "bg-rose-500/15 text-rose-400 border-rose-500/30"
+                                    : "bg-[#FFBE32]/10 text-[#FFBE32] border-[#FFBE32]/30"
                                 }`}
                               >
-                                {team.status}
+                                Room Lobby: {selectedEligibleIds.length} / 12 Max
                               </span>
-                              {team.score !== undefined && (
-                                <span className="text-xs font-mono text-gray-300">
-                                  Score: <strong>{team.score}</strong>
-                                </span>
-                              )}
                             </div>
-                          </label>
-                        );
-                      })}
-                    </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  // Pick unassigned squads first, up to 12
+                                  const unassignedIds = unassignedList.map((t) => t.teamId || t.id);
+                                  const fill12 = unassignedIds.slice(0, 12);
+                                  setSelectedEligibleIds(fill12);
+                                }}
+                                className="px-2.5 py-1 rounded-lg bg-[#FFBE32]/15 hover:bg-[#FFBE32] text-[#FFBE32] hover:text-black border border-[#FFBE32]/30 text-[11px] font-bold uppercase cursor-pointer transition-colors"
+                              >
+                                Select Next 12 Unassigned
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedEligibleIds([])}
+                                className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 text-[11px] font-bold uppercase cursor-pointer"
+                              >
+                                Clear
+                              </button>
+                            </div>
+                          </div>
+
+                          {selectedEligibleIds.length > 12 && (
+                            <div className="p-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-[11px] font-mono flex items-center gap-2">
+                              <AlertTriangle className="h-4 w-4 shrink-0 text-rose-400" />
+                              <span>Warning: Free Fire custom rooms support 12 squads max. You have selected {selectedEligibleIds.length}.</span>
+                            </div>
+                          )}
+
+                          <div className="flex-1 overflow-y-auto rounded-xl border border-white/10 bg-black/40 divide-y divide-white/5">
+                            {displayedTeams.map((team) => {
+                              const tId = team.teamId || team.id;
+                              const isChecked = selectedEligibleIds.includes(tId);
+                              const otherDivName = team.otherDivisionName;
+
+                              return (
+                                <label
+                                  key={tId}
+                                  className={`p-3 flex items-center justify-between gap-3 cursor-pointer hover:bg-white/[0.02] transition-colors ${
+                                    isChecked ? "bg-[#FFBE32]/5" : ""
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setSelectedEligibleIds((prev) => [...prev, tId]);
+                                        } else {
+                                          setSelectedEligibleIds((prev) => prev.filter((id) => id !== tId));
+                                        }
+                                      }}
+                                      className="cursor-pointer"
+                                    />
+                                    <div>
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="font-heading font-bold text-white text-sm uppercase">
+                                          {team.teamName}
+                                        </span>
+                                        {otherDivName ? (
+                                          <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-blue-500/15 text-blue-300 border border-blue-500/30">
+                                            In {otherDivName}
+                                          </span>
+                                        ) : (
+                                          <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                                            Unassigned
+                                          </span>
+                                        )}
+                                      </div>
+                                      <span className="text-[11px] text-gray-400 font-mono">
+                                        Captain: {team.captainName} {team.captainPhone ? `• ${team.captainPhone}` : ""}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-3 text-right">
+                                    <span
+                                      className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                        team.status === "APPROVED" || team.status === "CONFIRMED" || team.status === "QUALIFIED"
+                                          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
+                                          : "bg-amber-500/10 text-amber-400 border border-amber-500/30"
+                                      }`}
+                                    >
+                                      {team.status}
+                                    </span>
+                                  </div>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </>
+                      );
+                    })()}
 
                     <div className="flex justify-end gap-3 pt-3 border-t border-white/10 shrink-0">
                       <button
@@ -2744,7 +3385,7 @@ export const AdminTournamentDetailPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={handleSaveSelectedTeams}
-                        className="px-5 py-2 rounded-xl bg-[#FFBE32] hover:bg-[#FFA000] text-black font-heading font-bold uppercase tracking-wider text-xs shadow-[0_0_15px_rgba(255,190,50,0.3)]"
+                        className="px-5 py-2 rounded-xl bg-[#FFBE32] hover:bg-[#FFA000] text-black font-heading font-bold uppercase tracking-wider text-xs shadow-[0_0_15px_rgba(255,190,50,0.3)] cursor-pointer"
                       >
                         Save Squad Selection ({selectedEligibleIds.length})
                       </button>
@@ -2762,7 +3403,7 @@ export const AdminTournamentDetailPage: React.FC = () => {
                 <div className="flex items-center justify-between pb-3 border-b border-white/10">
                   <h3 className="font-display text-xl uppercase text-white flex items-center gap-2">
                     <ArrowRight className="h-5 w-5 text-[#FFBE32]" />
-                    Advance Squads
+                    Advance Squads to Next Division
                   </h3>
                   <button
                     onClick={() => setAdvanceModalOpen(false)}
@@ -2775,23 +3416,46 @@ export const AdminTournamentDetailPage: React.FC = () => {
                 <div className="space-y-3 text-xs">
                   <div>
                     <label className="block text-gray-300 font-heading font-bold uppercase tracking-wider mb-1">
-                      Destination Round
+                      Destination Division / Round
                     </label>
                     <select
                       value={advanceTargetRoundId}
                       onChange={(e) => setAdvanceTargetRoundId(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white font-heading font-bold uppercase focus:border-[#FFBE32] focus:outline-none"
+                      className="w-full px-3 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white font-heading font-bold uppercase focus:border-[#FFBE32] focus:outline-none cursor-pointer"
                     >
-                      <option value="">Select destination round...</option>
+                      <option value="">Select destination division...</option>
                       {rounds
                         .filter((r) => r.id !== advanceSourceRoundId)
-                        .map((r) => (
-                          <option key={r.id} value={r.id}>
-                            ROUND {r.roundNumber}: {r.name}
-                          </option>
-                        ))}
+                        .map((r) => {
+                          const currentTeamsCount = (r.roundTeams || []).length;
+                          return (
+                            <option key={r.id} value={r.id}>
+                              {r.name} (Current: {currentTeamsCount}/12 Squads)
+                            </option>
+                          );
+                        })}
                     </select>
                   </div>
+
+                  {advanceTargetRoundId && (
+                    <div className="p-2.5 rounded-xl bg-[#FFBE32]/10 border border-[#FFBE32]/30 text-[11px] font-mono text-gray-300 flex items-center justify-between">
+                      <span className="text-gray-400">Projected Lobby Capacity:</span>
+                      {(() => {
+                        const destRound = rounds.find((r) => r.id === advanceTargetRoundId);
+                        const cur = (destRound?.roundTeams || []).length;
+                        const total = cur + selectedAdvanceTeamIds.length;
+                        return (
+                          <span
+                            className={`font-bold ${
+                              total <= 12 ? "text-emerald-400" : "text-rose-400"
+                            }`}
+                          >
+                            {cur} + {selectedAdvanceTeamIds.length} = {total} / 12 Slots
+                          </span>
+                        );
+                      })()}
+                    </div>
+                  )}
 
                   <div>
                     <span className="text-gray-400 font-heading font-bold uppercase tracking-wider block mb-1">
@@ -2828,7 +3492,7 @@ export const AdminTournamentDetailPage: React.FC = () => {
                         Mark unselected squads as ELIMINATED (Tournament Ended)
                       </span>
                       <span className="text-[10px] text-gray-400 font-body">
-                        Unselected squads will see &ldquo;Tournament Ended - Eliminated&rdquo; on their dashboard and will not receive subsequent room credentials.
+                        Unselected squads in this division will see &ldquo;Tournament Ended - Eliminated&rdquo; on their dashboard and will not receive subsequent room credentials.
                       </span>
                     </div>
                   </label>
