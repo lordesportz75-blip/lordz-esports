@@ -184,7 +184,7 @@ export const AdminDashboardPage: React.FC = () => {
           </div>
           <div className="mt-4">
             <span className="font-display text-3xl font-extrabold text-white">
-              ₹{kpis?.totalRevenue ? kpis.totalRevenue.toLocaleString("en-IN") : "2,84,500"}
+              ₹{(kpis?.totalRevenue ?? 0).toLocaleString("en-IN")}
             </span>
             <span className="block mt-1 text-[11px] text-emerald-400 font-heading tracking-wider flex items-center gap-1">
               <ArrowUpRight className="h-3 w-3" /> +28% this tournament season
@@ -204,10 +204,10 @@ export const AdminDashboardPage: React.FC = () => {
           </div>
           <div className="mt-4">
             <span className="font-display text-3xl font-extrabold text-white">
-              {kpis?.tournamentsCount || 6}
+              {kpis?.tournamentsCount ?? 0}
             </span>
             <span className="block mt-1 text-[11px] text-[#FFBE32] font-heading tracking-wider flex items-center gap-1">
-              <Radio className="h-3 w-3 animate-pulse" /> {kpis?.liveTournamentsCount || 2} Live Match Fixtures
+              <Radio className="h-3 w-3 animate-pulse" /> {kpis?.liveTournamentsCount ?? 0} Live Match Fixtures
             </span>
           </div>
         </div>
@@ -227,10 +227,10 @@ export const AdminDashboardPage: React.FC = () => {
           </div>
           <div className="mt-4">
             <span className="font-display text-3xl font-extrabold text-white">
-              {kpis?.registrationsCount || 96}
+              {kpis?.registrationsCount ?? 0}
             </span>
             <span className="block mt-1 text-[11px] text-amber-300 font-heading tracking-wider flex items-center gap-1">
-              ⚠️ {kpis?.pendingRegistrationsCount || 8} Pending Verification →
+              ⚠️ {kpis?.pendingRegistrationsCount ?? 0} Pending Verification →
             </span>
           </div>
         </Link>
@@ -250,10 +250,10 @@ export const AdminDashboardPage: React.FC = () => {
           </div>
           <div className="mt-4">
             <span className="font-display text-3xl font-extrabold text-white">
-              {kpis?.ordersCount || 38}
+              {kpis?.ordersCount ?? 0}
             </span>
             <span className="block mt-1 text-[11px] text-emerald-400 font-heading tracking-wider">
-              {kpis?.pendingOrdersCount || 5} Orders in Processing →
+              {kpis?.pendingOrdersCount ?? 0} Orders in Processing →
             </span>
           </div>
         </Link>

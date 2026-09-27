@@ -138,9 +138,9 @@ export const AboutSection = ({
   ];
 
   const stats = [
-    { label: "NATIONAL TITLES", value: "04", icon: Trophy },
-    { label: "PRIZE PURSE WON", value: "₹15L+", icon: Award },
-    { label: "CLAN COMMUNITY", value: "50K+", icon: Users },
+    { label: "TITLES", value: "04", icon: Trophy },
+    { label: "PRIZE PURSE WON", value: "₹2L+", icon: Award },
+    { label: "CLAN COMMUNITY", value: "3K+", icon: Users },
     { label: "TIER-1 WIN RATE", value: "92%", icon: Shield },
   ];
 
