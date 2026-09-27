@@ -840,14 +840,21 @@ export const MyTournamentsPage: React.FC = () => {
                           if (roomAccess.allAssignedRounds?.length) {
                             const found = roomAccess.allAssignedRounds.find((r: any) => r.roundId === selRoundId);
                             if (found) {
+                              const isPub = Boolean(found.isPublished || found.credentialsPublished || found.roomId);
+                              const isElim = found.teamStatus === "ELIMINATED" || found.status === "ELIMINATED" || Boolean(found.isEliminated);
                               currentRound = {
                                 ...roomAccess,
                                 ...found,
-                                hasAccess: found.hasAccess ?? (found.status !== "ELIMINATED" && found.credentialsPublished),
-                                isEliminated: found.status === "ELIMINATED",
+                                hasAccess: found.hasAccess !== undefined ? Boolean(found.hasAccess) : (isPub && !isElim),
+                                isEliminated: isElim,
                               };
                             }
                           }
+
+                          const hasRoomCredentials = Boolean(
+                            (currentRound.hasAccess || Boolean(currentRound.roomId)) &&
+                            !currentRound.isEliminated
+                          );
 
                           return (
                             <div className="space-y-2">
@@ -859,7 +866,7 @@ export const MyTournamentsPage: React.FC = () => {
                                   </span>
                                   {roomAccess.allAssignedRounds.map((rnd: any) => {
                                     const isSel = (selRoundId || roomAccess.roundId) === rnd.roundId;
-                                    const isElim = rnd.status === "ELIMINATED";
+                                    const isElim = rnd.status === "ELIMINATED" || rnd.teamStatus === "ELIMINATED";
                                     return (
                                       <button
                                         key={rnd.roundId}
@@ -903,16 +910,28 @@ export const MyTournamentsPage: React.FC = () => {
                                     Your squad did not qualify from {currentRound.roundName || "the previous round"}. Credentials for next stages are closed.
                                   </p>
                                 </div>
-                              ) : currentRound.hasAccess ? (
+                              ) : hasRoomCredentials ? (
                                 <div className="p-4 rounded-xl bg-gradient-to-b from-[#FFBE32]/15 via-black/80 to-black border-2 border-[#FFBE32]/60 shadow-[0_0_25px_rgba(255,190,50,0.15)] space-y-3">
                                   <div className="flex items-center justify-between pb-1 border-b border-white/10">
                                     <div className="flex items-center gap-1.5 text-[#FFBE32] font-heading font-black text-xs uppercase tracking-wider">
                                       <Key className="w-3.5 h-3.5" />
-                                      <span>{currentRound.roundName}</span>
+                                      <span>{currentRound.roundName || "ROUND 1"}</span>
                                     </div>
-                                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-mono text-[9px] font-bold uppercase animate-pulse">
-                                      ROOM LIVE ✓
-                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleLoadMatches(tournament.id)}
+                                        disabled={fetchingMatches[tournament.id]}
+                                        className="text-[10px] font-heading font-bold text-[#FFBE32] hover:underline uppercase flex items-center gap-1 cursor-pointer"
+                                        title="Refresh Room Credentials"
+                                      >
+                                        <RefreshCw className={`w-3 h-3 ${fetchingMatches[tournament.id] ? "animate-spin" : ""}`} />
+                                        <span>{fetchingMatches[tournament.id] ? "Updating..." : "Refresh"}</span>
+                                      </button>
+                                      <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-mono text-[9px] font-bold uppercase animate-pulse">
+                                        ROOM LIVE ✓
+                                      </span>
+                                    </div>
                                   </div>
 
                                   <div className="p-2 rounded-lg bg-black/80 border border-[#FFBE32]/40 flex items-center justify-between text-xs font-mono">

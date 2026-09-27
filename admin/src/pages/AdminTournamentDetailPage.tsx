@@ -637,15 +637,33 @@ export const AdminTournamentDetailPage: React.FC = () => {
     }
   };
 
-  const handleSaveRoomCredentials = async () => {
-    if (!tournamentId || !activeRoundId) return;
+  const handleSaveRoomCredentials = async (targetRoundId?: string) => {
+    const roundIdToUse = targetRoundId || activeRoundId || rounds[0]?.id;
+    if (!tournamentId) return;
+
+    if (!roundIdToUse && rounds.length === 0) {
+      alert("No division found. Please create a round or division first.");
+      return;
+    }
+
+    // Ensure credentials are marked as published and send payload synchronously
+    const payload = {
+      ...roomForm,
+      credentialsPublished: true,
+    };
+    setRoomForm(payload);
     setSavingRoomCredentials(true);
     try {
-      const res = await tournamentsApi.updateRoundCredentials(tournamentId, activeRoundId, roomForm);
+      const res = await tournamentsApi.updateRoundCredentials(tournamentId, roundIdToUse || "default", payload);
       if (res?.success) {
         const updatedRounds = await tournamentsApi.getRounds(tournamentId);
-        if (updatedRounds) setRounds(updatedRounds);
-        alert("Custom Room credentials saved successfully!");
+        if (updatedRounds && updatedRounds.length > 0) {
+          setRounds(updatedRounds);
+          if (!activeRoundId) setActiveRoundId(roundIdToUse || updatedRounds[0].id);
+        }
+        alert("Custom Room credentials saved and published to squads successfully!");
+      } else {
+        alert(res?.message || "Failed to save room credentials");
       }
     } catch (err: any) {
       alert(err.message || "Failed to save room credentials");
@@ -2437,7 +2455,7 @@ export const AdminTournamentDetailPage: React.FC = () => {
                           <button
                             type="button"
                             disabled={savingRoomCredentials}
-                            onClick={handleSaveRoomCredentials}
+                            onClick={() => handleSaveRoomCredentials(currentRound.id)}
                             className="px-3.5 py-1.5 rounded-xl bg-[#FFBE32] hover:bg-[#FFA000] text-black font-heading font-black text-xs uppercase tracking-wider shadow-[0_0_12px_rgba(255,190,50,0.3)] transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
                           >
                             <Save className="h-3.5 w-3.5" />

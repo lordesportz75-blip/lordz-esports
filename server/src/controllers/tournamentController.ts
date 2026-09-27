@@ -3981,18 +3981,90 @@ export const updateRoundCredentials = async (req: AuthenticatedRequest, res: Res
     const { roomId, roomPassword, map, roomTime, credentialsPublished, customNotes } = req.body;
 
     let round: any = null;
+
+    // 1. Try finding by roundId in Prisma
     try {
       round = await (prisma as any).tournamentRound.findUnique({ where: { id: roundId } });
     } catch (e) {}
 
+    // 2. Try finding by tournamentId & roundId / name / number in Prisma
     if (!round) {
-      round = memoryRounds.find((r) => r.id === roundId);
+      try {
+        const numVal = Number(roundId);
+        round = await (prisma as any).tournamentRound.findFirst({
+          where: {
+            tournamentId: id,
+            OR: [
+              { id: roundId },
+              { name: roundId },
+              ...(!isNaN(numVal) && numVal > 0 ? [{ roundNumber: numVal }] : []),
+            ],
+          },
+        });
+      } catch (e) {}
     }
 
+    // 3. Try finding in memory store
     if (!round) {
-      res.status(404).json({ success: false, message: "Round not found" });
-      return;
+      round = memoryRounds.find(
+        (r) =>
+          r.id === roundId ||
+          (r.tournamentId === id && (r.name === roundId || String(r.roundNumber) === String(roundId)))
+      );
     }
+
+    // 4. Try finding first round of this tournament in Prisma
+    if (!round) {
+      try {
+        round = await (prisma as any).tournamentRound.findFirst({
+          where: { tournamentId: id },
+          orderBy: { roundNumber: "asc" },
+        });
+      } catch (e) {}
+    }
+
+    // 5. Try finding first round of this tournament in memory
+    if (!round) {
+      round = memoryRounds.find((r) => r.tournamentId === id);
+    }
+
+    // 6. If tournament exists but has no round yet, create default round to never fail with 404
+    if (!round) {
+      try {
+        round = await (prisma as any).tournamentRound.create({
+          data: {
+            tournamentId: id,
+            name: "ROUND 1",
+            roundNumber: 1,
+            roundType: "BATTLE_ROYALE",
+            maxTeams: 12,
+            selectionMethod: "MANUAL",
+            status: "UPCOMING",
+            description: JSON.stringify({}),
+          },
+        });
+      } catch (e) {}
+
+      if (!round) {
+        round = {
+          id: roundId && roundId !== "undefined" && roundId !== "default" ? roundId : `round-${id}-1`,
+          tournamentId: id,
+          name: "ROUND 1",
+          roundNumber: 1,
+          roundType: "BATTLE_ROYALE",
+          maxTeams: 12,
+          selectionMethod: "MANUAL",
+          status: "UPCOMING",
+          description: JSON.stringify({}),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          roundTeams: [],
+        };
+        memoryRounds.push(round);
+      }
+    }
+
+    const targetId = round.id;
 
     let existingMeta: any = {};
     if (round.description && typeof round.description === "string" && round.description.trim().startsWith("{")) {
@@ -4001,20 +4073,31 @@ export const updateRoundCredentials = async (req: AuthenticatedRequest, res: Res
       } catch (e) {}
     }
 
+    const cleanRoomId = roomId !== undefined ? String(roomId).trim() : existingMeta.roomId || "";
+    const cleanRoomPassword = roomPassword !== undefined ? String(roomPassword).trim() : existingMeta.roomPassword || "";
+
+    // If roomId is provided, default credentialsPublished to true unless explicitly passed false
+    const isPublished =
+      credentialsPublished !== undefined
+        ? Boolean(credentialsPublished)
+        : cleanRoomId
+        ? true
+        : Boolean(existingMeta.credentialsPublished);
+
     const updatedMeta = {
       ...existingMeta,
-      roomId: roomId !== undefined ? String(roomId).trim() : existingMeta.roomId || "",
-      roomPassword: roomPassword !== undefined ? String(roomPassword).trim() : existingMeta.roomPassword || "",
+      roomId: cleanRoomId,
+      roomPassword: cleanRoomPassword,
       map: map !== undefined ? map : existingMeta.map || "BERMUDA",
       roomTime: roomTime !== undefined ? roomTime : existingMeta.roomTime || round.startTime || "",
-      credentialsPublished: credentialsPublished !== undefined ? Boolean(credentialsPublished) : Boolean(existingMeta.credentialsPublished),
+      credentialsPublished: isPublished,
       customNotes: customNotes !== undefined ? customNotes : existingMeta.customNotes || "",
     };
 
     let updatedRound: any = null;
     try {
       updatedRound = await (prisma as any).tournamentRound.update({
-        where: { id: roundId },
+        where: { id: targetId },
         data: {
           description: JSON.stringify(updatedMeta),
           startTime: updatedMeta.roomTime || round.startTime,
@@ -4029,7 +4112,7 @@ export const updateRoundCredentials = async (req: AuthenticatedRequest, res: Res
       console.warn("Prisma updateRoundCredentials fallback to memory:", e);
     }
 
-    const memIdx = memoryRounds.findIndex((r) => r.id === roundId);
+    const memIdx = memoryRounds.findIndex((r) => r.id === targetId || r.id === roundId);
     if (memIdx !== -1) {
       memoryRounds[memIdx] = {
         ...memoryRounds[memIdx],
@@ -4038,6 +4121,39 @@ export const updateRoundCredentials = async (req: AuthenticatedRequest, res: Res
         updatedAt: new Date(),
       };
       if (!updatedRound) updatedRound = memoryRounds[memIdx];
+    } else {
+      const memObj = {
+        ...round,
+        id: targetId,
+        tournamentId: id,
+        description: JSON.stringify(updatedMeta),
+        startTime: updatedMeta.roomTime || round.startTime,
+        updatedAt: new Date(),
+      };
+      memoryRounds.push(memObj);
+      if (!updatedRound) updatedRound = memObj;
+    }
+
+    // Broadcast in-app notifications to registered players if credentials are published
+    if (isPublished && cleanRoomId) {
+      try {
+        const regs = await prisma.tournamentRegistration.findMany({
+          where: { tournamentId: id },
+          select: { submittedById: true },
+        });
+        const userIds = Array.from(new Set(regs.map((r) => r.submittedById).filter(Boolean)));
+        for (const uid of userIds) {
+          await prisma.notification.create({
+            data: {
+              userId: uid as string,
+              type: "ANNOUNCEMENT",
+              title: "Room Credentials Published! 🎮",
+              message: `Custom room credentials for ${round.name} are live. Room ID: ${cleanRoomId}, Pass: ${cleanRoomPassword}. Check your dashboard.`,
+              metadata: JSON.stringify({ tournamentId: id, roundId: targetId, roomId: cleanRoomId }),
+            },
+          }).catch(() => {});
+        }
+      } catch (e) {}
     }
 
     res.json({
@@ -4057,6 +4173,7 @@ export const getMyRoomAccess = async (req: AuthenticatedRequest, res: Response, 
   try {
     const { id } = req.params;
     const userId = (req as any).user?.id;
+    const userEmail = (req as any).user?.email;
 
     if (!userId) {
       res.status(401).json({ success: false, message: "Authentication required" });
@@ -4071,6 +4188,7 @@ export const getMyRoomAccess = async (req: AuthenticatedRequest, res: Response, 
           tournamentId: id,
           OR: [
             { submittedById: userId },
+            ...(userEmail ? [{ captainEmail: userEmail }] : []),
             { team: { leaderId: userId } },
             { team: { members: { some: { userId } } } },
           ],
@@ -4087,7 +4205,10 @@ export const getMyRoomAccess = async (req: AuthenticatedRequest, res: Response, 
       userRegs = memoryRegistrations.filter(
         (r) =>
           r.tournamentId === id &&
-          (r.submittedById === userId || r.leaderId === userId || (r.players && r.players.some((p: any) => p.userId === userId)))
+          (r.submittedById === userId ||
+            r.leaderId === userId ||
+            (userEmail && r.captainEmail === userEmail) ||
+            (r.players && r.players.some((p: any) => p.userId === userId)))
       );
     }
 
@@ -4141,7 +4262,94 @@ export const getMyRoomAccess = async (req: AuthenticatedRequest, res: Response, 
       }
     }
 
+    // If squad is registered in tournament but not explicitly linked in roundTeams:
     if (teamRoundEntries.length === 0) {
+      if (rounds && rounds.length > 0) {
+        const activeRound = rounds[0];
+        const parsed = parseRoundWithCredentials(activeRound);
+        const hasRoomId = Boolean(parsed.roomId);
+        const isPub = Boolean(parsed.credentialsPublished || hasRoomId);
+
+        let assignedSlot = reg.slotNumber || 1;
+        if (!reg.slotNumber) {
+          try {
+            const allRegs = await prisma.tournamentRegistration.findMany({
+              where: { tournamentId: id },
+              orderBy: { createdAt: "asc" },
+            });
+            const idx = allRegs.findIndex((r: any) => r.id === reg.id || (r.teamId && r.teamId === teamId));
+            if (idx >= 0) assignedSlot = (idx % 12) + 1;
+          } catch (e) {}
+        }
+
+        const roundEntryItem = {
+          roundId: parsed.id,
+          roundName: parsed.name,
+          roundNumber: parsed.roundNumber,
+          slotNumber: assignedSlot,
+          teamStatus: reg.status || "CONFIRMED",
+          isEliminated: false,
+          isPublished: isPub,
+          credentialsPublished: isPub,
+          hasAccess: isPub && hasRoomId,
+          roomId: isPub ? parsed.roomId : "",
+          roomPassword: isPub ? parsed.roomPassword : "",
+          map: parsed.map || "BERMUDA",
+          roomTime: parsed.roomTime || parsed.startTime || "",
+          notes: parsed.customNotes || "",
+        };
+
+        if (isPub && hasRoomId) {
+          res.json({
+            success: true,
+            data: {
+              isRegistered: true,
+              teamName,
+              hasAccess: true,
+              isEliminated: false,
+              isPublished: true,
+              credentialsPublished: true,
+              roundId: parsed.id,
+              roundName: parsed.name,
+              roundNumber: parsed.roundNumber,
+              slotNumber: assignedSlot,
+              roomId: parsed.roomId,
+              roomPassword: parsed.roomPassword,
+              map: parsed.map || "BERMUDA",
+              roomTime: parsed.roomTime || parsed.startTime,
+              notes: parsed.customNotes,
+              teamStatus: reg.status || "CONFIRMED",
+              allAssignedRounds: [roundEntryItem],
+              message: `Room credentials published! Join Slot #${assignedSlot} in Free Fire.`,
+            },
+          });
+          return;
+        } else {
+          res.json({
+            success: true,
+            data: {
+              isRegistered: true,
+              teamName,
+              hasAccess: false,
+              isEliminated: false,
+              isPublished: false,
+              credentialsPublished: false,
+              roundId: parsed.id,
+              roundName: parsed.name,
+              roundNumber: parsed.roundNumber,
+              slotNumber: assignedSlot,
+              map: parsed.map || "BERMUDA",
+              roomTime: parsed.roomTime || parsed.startTime,
+              notes: parsed.customNotes,
+              teamStatus: reg.status || "CONFIRMED",
+              allAssignedRounds: [roundEntryItem],
+              message: `Registration confirmed for ${parsed.name} (Slot #${assignedSlot}). Room credentials reveal 15 minutes before match start time.`,
+            },
+          });
+          return;
+        }
+      }
+
       res.json({
         success: true,
         data: {
@@ -4169,15 +4377,20 @@ export const getMyRoomAccess = async (req: AuthenticatedRequest, res: Response, 
 
     const allAssignedRounds = teamRoundEntries.map((entry) => {
       const parsed = parseRoundWithCredentials(entry.round);
-      const isPub = Boolean(parsed.credentialsPublished);
+      const hasRoomId = Boolean(parsed.roomId);
+      const isPub = Boolean(parsed.credentialsPublished || hasRoomId);
+      const isElim = entry.roundTeam.status === "ELIMINATED" || entry.roundTeam.status === "DISQUALIFIED";
+      const hasAcc = isPub && !isElim && hasRoomId;
       return {
         roundId: parsed.id,
         roundName: parsed.name,
         roundNumber: parsed.roundNumber,
         slotNumber: entry.roundTeam.seed || 1,
         teamStatus: entry.roundTeam.status,
-        isEliminated: entry.roundTeam.status === "ELIMINATED" || entry.roundTeam.status === "DISQUALIFIED",
+        isEliminated: isElim,
         isPublished: isPub,
+        credentialsPublished: isPub,
+        hasAccess: hasAcc,
         roomId: isPub ? parsed.roomId : "",
         roomPassword: isPub ? parsed.roomPassword : "",
         map: parsed.map || "BERMUDA",
@@ -4209,9 +4422,10 @@ export const getMyRoomAccess = async (req: AuthenticatedRequest, res: Response, 
     }
 
     const slotNumber = latestRoundTeam.seed || 1;
-    const isPublished = Boolean(latestRound.credentialsPublished);
+    const hasRoomId = Boolean(latestRound.roomId);
+    const isPublished = Boolean(latestRound.credentialsPublished || hasRoomId);
 
-    if (isPublished) {
+    if (isPublished && hasRoomId) {
       res.json({
         success: true,
         data: {
@@ -4220,6 +4434,7 @@ export const getMyRoomAccess = async (req: AuthenticatedRequest, res: Response, 
           hasAccess: true,
           isEliminated: false,
           isPublished: true,
+          credentialsPublished: true,
           roundId: latestRound.id,
           roundName: latestRound.name,
           roundNumber: latestRound.roundNumber,
@@ -4243,6 +4458,7 @@ export const getMyRoomAccess = async (req: AuthenticatedRequest, res: Response, 
           hasAccess: false,
           isEliminated: false,
           isPublished: false,
+          credentialsPublished: false,
           roundId: latestRound.id,
           roundName: latestRound.name,
           roundNumber: latestRound.roundNumber,
