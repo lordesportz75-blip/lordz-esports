@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
-import { tournamentsData, type Tournament } from "../data/tournaments";
+import { type Tournament } from "../data/tournaments";
+import { tournamentsApi } from "../api/tournaments";
 import type { Match } from "../data/matches";
 import type { MediaItem } from "../data/media";
 import type { NewsArticle } from "../data/news";
@@ -27,9 +28,31 @@ export const ModalProvider = ({ children }: { children: ReactNode }) => {
   });
   const [selectedArticle, setSelectedArticle] = useState<NewsArticle | null>(null);
 
-  const openJoinTournament = (tournament?: Tournament) => {
-    setSelectedTournament(tournament || null);
-    setJoinModalOpen(true);
+  const openJoinTournament = async (tournament?: Tournament) => {
+    if (tournament) {
+      setSelectedTournament(tournament);
+      setJoinModalOpen(true);
+      return;
+    }
+
+    try {
+      const list = await tournamentsApi.getAll();
+      const active = (list || []).filter(
+        (t) => t.status !== "COMPLETED" && t.status !== "ARCHIVED" && t.status !== "CANCELLED"
+      );
+      if (active.length > 0) {
+        setSelectedTournament(active[0]);
+        setJoinModalOpen(true);
+      } else {
+        if (typeof window !== "undefined") {
+          window.location.href = "/tournaments";
+        }
+      }
+    } catch {
+      if (typeof window !== "undefined") {
+        window.location.href = "/tournaments";
+      }
+    }
   };
 
   const closeJoinTournament = () => {
@@ -96,11 +119,13 @@ export const ModalProvider = ({ children }: { children: ReactNode }) => {
       {children}
 
       {/* Global 6-Step Tournament Registration Stepper */}
-      <TournamentRegistrationStepper
-        isOpen={joinModalOpen}
-        onClose={closeJoinTournament}
-        tournament={selectedTournament || tournamentsData[0]}
-      />
+      {selectedTournament && (
+        <TournamentRegistrationStepper
+          isOpen={joinModalOpen}
+          onClose={closeJoinTournament}
+          tournament={selectedTournament}
+        />
+      )}
 
       <LoginModal isOpen={loginModalOpen} onClose={closeLogin} />
 

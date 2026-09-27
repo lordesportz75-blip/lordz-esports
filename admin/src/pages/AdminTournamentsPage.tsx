@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { tournamentsApi } from "../api/tournaments";
+import { clearClientCache } from "../api/client";
 import {
   type Tournament,
   type PrizeTier,
   type SponsorItem,
-  tournamentsData,
   getTournamentBannerUrl,
   DEFAULT_TOURNAMENT_BANNER,
 } from "../data/tournaments";
@@ -362,9 +362,9 @@ export const AdminTournamentsPage: React.FC = () => {
         status: statusFilter,
         search: searchQuery,
       });
-      setTournaments(data && data.length > 0 ? data : tournamentsData);
+      setTournaments(Array.isArray(data) ? data : []);
     } catch {
-      setTournaments(tournamentsData);
+      setTournaments([]);
     } finally {
       setLoading(false);
     }
@@ -615,14 +615,32 @@ export const AdminTournamentsPage: React.FC = () => {
     } catch {
       // optimistic
     }
+    clearClientCache("tournaments");
     setTournaments((prev) => prev.filter((t) => t.id !== id));
     setDeleteId(null);
+  };
+
+  // Quick Status Toggle Handler (e.g. Mark as COMPLETED or Reopen)
+  const handleQuickStatus = async (id: string, newStatus: string) => {
+    try {
+      await tournamentsApi.update(id, { status: newStatus as any });
+      clearClientCache("tournaments");
+      setTournaments((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, status: newStatus as any } : t))
+      );
+      if (statusFilter !== "ALL" && statusFilter !== newStatus) {
+        setTournaments((prev) => prev.filter((t) => t.id !== id));
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to update tournament status");
+    }
   };
 
   // Duplicate Handler
   const handleDuplicate = async (id: string) => {
     try {
       const duplicated = await tournamentsApi.duplicate(id);
+      clearClientCache("tournaments");
       setTournaments((prev) => [duplicated, ...prev]);
       alert(`Tournament successfully duplicated as "${duplicated.title}" in DRAFT mode!`);
     } catch {
@@ -684,17 +702,30 @@ export const AdminTournamentsPage: React.FC = () => {
       <div className="p-4 rounded-2xl bg-[#0D0D12] border border-white/10 flex flex-col md:flex-row gap-4 items-center justify-between">
         {/* Status Pill Tabs */}
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
-          {["ALL", "REGISTRATION_OPEN", "LIVE", "UPCOMING", "DRAFT", "COMPLETED"].map((st) => (
+          {[
+            { id: "ALL", label: "ALL" },
+            { id: "REGISTRATION_OPEN", label: "REGISTRATION OPEN" },
+            { id: "LIVE", label: "LIVE NOW" },
+            { id: "UPCOMING", label: "UPCOMING" },
+            { id: "DRAFT", label: "DRAFT" },
+            { id: "COMPLETED", label: "COMPLETED" },
+          ].map((tab) => (
             <button
-              key={st}
-              onClick={() => setStatusFilter(st)}
-              className={`px-4 py-1.5 rounded-lg text-xs font-heading font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                statusFilter === st
+              key={tab.id}
+              onClick={() => setStatusFilter(tab.id)}
+              className={`px-4 py-1.5 rounded-lg text-xs font-heading font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 ${
+                statusFilter === tab.id
                   ? "bg-[#FFBE32] text-black shadow-[0_0_10px_rgba(255,190,50,0.3)] font-extrabold"
                   : "bg-black/50 text-gray-400 hover:text-white border border-white/5"
               }`}
             >
-              {st.replace("_", " ")}
+              {tab.id === "COMPLETED" && (
+                <CheckCircle2 className={`h-3.5 w-3.5 ${statusFilter === tab.id ? "text-black" : "text-emerald-400"}`} />
+              )}
+              {tab.id === "LIVE" && (
+                <Radio className={`h-3.5 w-3.5 ${statusFilter === tab.id ? "text-black" : "text-rose-400 animate-pulse"}`} />
+              )}
+              <span>{tab.label}</span>
             </button>
           ))}
         </div>
@@ -716,6 +747,33 @@ export const AdminTournamentsPage: React.FC = () => {
       {loading ? (
         <div className="py-20 text-center text-gray-400 font-mono text-xs animate-pulse">
           Loading tournaments...
+        </div>
+      ) : tournaments.length === 0 ? (
+        <div className="py-20 px-6 rounded-2xl bg-[#0D0D12] border border-white/10 text-center max-w-lg mx-auto shadow-2xl">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[#FFBE32]/10 border border-[#FFBE32]/25 flex items-center justify-center text-[#FFBE32]">
+            <Trophy className="w-8 h-8 opacity-80" />
+          </div>
+          <h3 className="font-heading text-lg font-bold uppercase tracking-wider text-white">
+            {statusFilter === "COMPLETED"
+              ? "NO COMPLETED TOURNAMENTS"
+              : statusFilter !== "ALL"
+              ? `NO ${statusFilter.replace("_", " ")} TOURNAMENTS`
+              : "NO TOURNAMENTS AVAILABLE"}
+          </h3>
+          <p className="font-body text-xs text-gray-400 mt-2 max-w-sm mx-auto leading-relaxed">
+            {statusFilter === "COMPLETED"
+              ? "Tournaments that conclude and are marked as COMPLETED will appear in this list."
+              : "There are currently no tournaments found in the database. Click 'Create Tournament' to add your first competitive circuit."}
+          </p>
+          {statusFilter === "ALL" && (
+            <button
+              onClick={handleOpenCreate}
+              className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-heading text-xs font-bold uppercase tracking-wider text-black bg-[#FFBE32] hover:bg-[#FFA000] transition-all cursor-pointer shadow-[0_0_15px_rgba(255,190,50,0.3)]"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Create Tournament Now</span>
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-5">
@@ -769,12 +827,15 @@ export const AdminTournamentsPage: React.FC = () => {
                             ? "bg-rose-500/20 text-rose-400 border border-rose-500/30"
                             : t.status === "REGISTRATION_OPEN" || t.status === "UPCOMING"
                             ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                            : t.status === "COMPLETED"
+                            ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-extrabold"
                             : t.status === "DRAFT"
                             ? "bg-neutral-800 text-gray-300 border border-neutral-700"
                             : "bg-neutral-800 text-neutral-400 border border-neutral-700"
                         }`}
                       >
                         {t.status === "LIVE" && <Radio className="h-2.5 w-2.5 animate-pulse" />}
+                        {t.status === "COMPLETED" && <CheckCircle2 className="h-2.5 w-2.5 text-emerald-400" />}
                         {t.status.replace("_", " ")}
                       </span>
 
@@ -841,6 +902,25 @@ export const AdminTournamentsPage: React.FC = () => {
                   </Link>
 
                   <div className="flex items-center gap-2">
+                    {t.status !== "COMPLETED" ? (
+                      <button
+                        onClick={() => handleQuickStatus(t.id, "COMPLETED")}
+                        className="px-2.5 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:text-emerald-300 transition-all cursor-pointer flex items-center gap-1 text-[11px] font-heading font-bold uppercase"
+                        title="Mark Tournament as Completed"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Complete</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleQuickStatus(t.id, "REGISTRATION_OPEN")}
+                        className="px-2.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 hover:text-amber-300 transition-all cursor-pointer flex items-center gap-1 text-[11px] font-heading font-bold uppercase"
+                        title="Reopen Tournament"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Reopen</span>
+                      </button>
+                    )}
                     <button
                       onClick={() => handleDuplicate(t.id)}
                       className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white transition-all cursor-pointer"

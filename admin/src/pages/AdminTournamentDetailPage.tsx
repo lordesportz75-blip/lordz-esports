@@ -7,7 +7,6 @@ import {
   type TournamentRound,
   type RegistrationItem,
   type LeaderboardEntry,
-  tournamentsData,
   getTournamentBannerUrl,
   DEFAULT_TOURNAMENT_BANNER,
 } from "../data/tournaments";
@@ -315,12 +314,7 @@ export const AdminTournamentDetailPage: React.FC = () => {
         if (data.leaderboard) setLeaderboard(data.leaderboard);
       }
     } catch {
-      // fallback
-      const fallback = tournamentsData.find((t) => t.id === tournamentId || t.slug === tournamentId);
-      if (fallback) {
-        setTournament(fallback);
-        setSettingsForm(fallback);
-      }
+      // not found
     } finally {
       // Fetch fresh registrations, stages, leaderboard, rounds, waitlist, check-in, matches in parallel
       try {

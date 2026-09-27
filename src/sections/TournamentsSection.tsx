@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { SectionHeading } from "../components/common/SectionHeading";
-import { tournamentsData, type Tournament, getTournamentBannerUrl, DEFAULT_TOURNAMENT_BANNER } from "../data/tournaments";
+import { type Tournament, getTournamentBannerUrl, DEFAULT_TOURNAMENT_BANNER } from "../data/tournaments";
 import { tournamentsApi, getMyTournaments } from "../api/tournaments";
 import { useAuth } from "../context/AuthContext";
 import { Trophy, Calendar, Shield, ArrowRight, CheckCircle2 } from "lucide-react";
@@ -14,25 +14,32 @@ interface TournamentsSectionProps {
 }
 
 type GameFilter = "ALL" | "FREE FIRE MAX" | "FREE FIRE";
-type StatusFilter = "ALL" | "LIVE" | "UPCOMING" | "COMPLETED";
+type StatusFilter = "ALL" | "LIVE" | "UPCOMING";
 
 export const TournamentsSection = ({
   onSelectTournament,
   showHeader = true,
 }: TournamentsSectionProps) => {
   const { isAuthenticated } = useAuth();
-  const [tournaments, setTournaments] = useState<Tournament[]>(tournamentsData);
+  const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [loading, setLoading] = useState(true);
   const [userTournaments, setUserTournaments] = useState<any[]>([]);
   const [selectedGame, setSelectedGame] = useState<GameFilter>("ALL");
   const [selectedStatus, setSelectedStatus] = useState<StatusFilter>("ALL");
 
   useEffect(() => {
+    setLoading(true);
     tournamentsApi
       .getAll()
       .then((data) => {
-        if (data && data.length > 0) setTournaments(data);
+        setTournaments(Array.isArray(data) ? data : []);
       })
-      .catch(() => {});
+      .catch(() => {
+        setTournaments([]);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
   useEffect(() => {
@@ -73,22 +80,24 @@ export const TournamentsSection = ({
   ];
 
   const statusFilters: { label: string; value: StatusFilter }[] = [
-    { label: "ALL STATUS", value: "ALL" },
-    { label: "LIVE", value: "LIVE" },
+    { label: "ALL ACTIVE", value: "ALL" },
+    { label: "LIVE NOW", value: "LIVE" },
     { label: "UPCOMING", value: "UPCOMING" },
-    { label: "COMPLETED", value: "COMPLETED" },
   ];
 
   const filteredTournaments = useMemo(() => {
     return tournaments.filter((t) => {
+      // Completed, Archived, and Cancelled tournaments are automatically removed from the main website
+      if (t.status === "COMPLETED" || t.status === "ARCHIVED" || t.status === "CANCELLED") {
+        return false;
+      }
+
       const matchGame = selectedGame === "ALL" || t.gameCategory === selectedGame;
-      let matchStatus = selectedStatus === "ALL";
+      let matchStatus = true;
       if (selectedStatus === "LIVE") {
         matchStatus = t.status === "LIVE" || t.status === "ONGOING";
       } else if (selectedStatus === "UPCOMING") {
         matchStatus = ["UPCOMING", "REGISTRATION_OPEN", "CLOSING_SOON", "FULL", "REGISTRATION_CLOSED"].includes(t.status);
-      } else if (selectedStatus === "COMPLETED") {
-        matchStatus = t.status === "COMPLETED" || t.status === "ARCHIVED";
       }
       return matchGame && matchStatus;
     });
@@ -150,7 +159,20 @@ export const TournamentsSection = ({
 
         {/* Tournament Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <AnimatePresence mode="popLayout">
+          {loading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <div
+                key={`skel-${i}`}
+                className="rounded-xl bg-[#0C0C0E] border border-white/5 p-4 space-y-4 animate-pulse"
+              >
+                <div className="h-40 w-full bg-white/5 rounded-lg" />
+                <div className="h-6 w-3/4 bg-white/5 rounded" />
+                <div className="h-4 w-1/2 bg-white/5 rounded" />
+                <div className="h-10 w-full bg-white/5 rounded mt-4" />
+              </div>
+            ))
+          ) : (
+            <AnimatePresence mode="popLayout">
             {filteredTournaments.length > 0 ? (
               filteredTournaments.map((t, index) => {
                 const isLive = t.status === "LIVE";
@@ -340,6 +362,18 @@ export const TournamentsSection = ({
                   </motion.div>
                 );
               })
+            ) : tournaments.length === 0 || tournaments.every((t) => t.status === "COMPLETED" || t.status === "ARCHIVED" || t.status === "CANCELLED") ? (
+              <div className="col-span-full py-20 px-6 rounded-2xl bg-[#0D0D10]/80 border border-white/10 text-center max-w-lg mx-auto shadow-2xl backdrop-blur-md">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[#FFBE32]/10 border border-[#FFBE32]/30 flex items-center justify-center text-[#FFBE32]">
+                  <Trophy className="w-8 h-8 opacity-70" />
+                </div>
+                <h3 className="font-display text-xl uppercase tracking-wider text-white">
+                  NO TOURNAMENTS AVAILABLE
+                </h3>
+                <p className="font-body text-xs text-gray-400 mt-2 leading-relaxed">
+                  There are currently no active tournaments open for registration. Check back soon or join our community for upcoming circuit schedules!
+                </p>
+              </div>
             ) : (
               <div className="col-span-full py-16 text-center text-gray-500">
                 <Trophy className="h-12 w-12 mx-auto mb-3 opacity-30 text-[#FFBE32]" />
@@ -358,6 +392,7 @@ export const TournamentsSection = ({
               </div>
             )}
           </AnimatePresence>
+        )}
         </div>
       </div>
     </section>

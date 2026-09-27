@@ -1,6 +1,5 @@
-import { apiRequest, getApiUrl } from "./client";
+import { apiRequest, getApiUrl, clearClientCache } from "./client";
 import {
-  tournamentsData,
   type Tournament,
   type TournamentStage,
   type TournamentRound,
@@ -49,15 +48,15 @@ export const tournamentsApi = {
     if (params?.search) query.set("search", params.search);
 
     const qs = query.toString() ? `?${query.toString()}` : "";
-    return apiRequest<Tournament[]>(`/tournaments${qs}`, { method: "GET" }, tournamentsData);
+    return apiRequest<Tournament[]>(`/tournaments${qs}`, { method: "GET" }, []);
   },
 
   getById: async (id: string): Promise<Tournament | null> => {
-    const fallback = tournamentsData.find((t) => t.id === id || t.slug === id) || null;
-    return apiRequest<Tournament | null>(`/tournaments/${id}`, { method: "GET" }, fallback);
+    return apiRequest<Tournament | null>(`/tournaments/${id}`, { method: "GET" }, null);
   },
 
   create: async (data: Partial<Tournament>): Promise<Tournament> => {
+    clearClientCache("tournaments");
     return apiRequest<Tournament>("/tournaments", {
       method: "POST",
       body: JSON.stringify(data),
@@ -65,6 +64,7 @@ export const tournamentsApi = {
   },
 
   update: async (id: string, data: Partial<Tournament>): Promise<Tournament> => {
+    clearClientCache("tournaments");
     return apiRequest<Tournament>(`/tournaments/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
@@ -72,12 +72,14 @@ export const tournamentsApi = {
   },
 
   delete: async (id: string): Promise<{ success: boolean }> => {
+    clearClientCache("tournaments");
     return apiRequest<{ success: boolean }>(`/tournaments/${id}`, {
       method: "DELETE",
     });
   },
 
   duplicate: async (id: string): Promise<Tournament> => {
+    clearClientCache("tournaments");
     return apiRequest<Tournament>(`/tournaments/${id}/duplicate`, {
       method: "POST",
     });

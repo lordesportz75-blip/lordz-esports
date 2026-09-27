@@ -4,7 +4,6 @@ import { tournamentsApi } from "../api/tournaments";
 import {
   type RegistrationItem,
   type Tournament,
-  tournamentsData,
 } from "../data/tournaments";
 import { formatCurrency } from "../utils/formatters";
 import {
@@ -39,19 +38,14 @@ export const AdminRegistrationsPage: React.FC = () => {
     tournamentsApi
       .getAll()
       .then((data) => {
-        if (data && data.length > 0) {
-          setTournaments(data);
-          if (!selectedTourneyId && data.length > 0) {
-            setSelectedTourneyId(data[0].id);
-          }
-        } else {
-          setTournaments(tournamentsData);
-          if (!selectedTourneyId) setSelectedTourneyId(tournamentsData[0].id);
+        const list = Array.isArray(data) ? data : [];
+        setTournaments(list);
+        if (list.length > 0 && !selectedTourneyId) {
+          setSelectedTourneyId(list[0].id);
         }
       })
       .catch(() => {
-        setTournaments(tournamentsData);
-        if (!selectedTourneyId) setSelectedTourneyId(tournamentsData[0].id);
+        setTournaments([]);
       });
   }, []);
 

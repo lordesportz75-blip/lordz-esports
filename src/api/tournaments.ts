@@ -1,6 +1,5 @@
 import { apiRequest, getApiUrl } from "./client";
 import {
-  tournamentsData,
   type Tournament,
   type TournamentStage,
   type RegistrationItem,
@@ -46,12 +45,11 @@ export const tournamentsApi = {
     if (params?.search) query.set("search", params.search);
 
     const qs = query.toString() ? `?${query.toString()}` : "";
-    return apiRequest<Tournament[]>(`/tournaments${qs}`, { method: "GET" }, tournamentsData);
+    return apiRequest<Tournament[]>(`/tournaments${qs}`, { method: "GET" }, []);
   },
 
   getById: async (id: string): Promise<Tournament | null> => {
-    const fallback = tournamentsData.find((t) => t.id === id || t.slug === id) || null;
-    return apiRequest<Tournament | null>(`/tournaments/${id}`, { method: "GET" }, fallback);
+    return apiRequest<Tournament | null>(`/tournaments/${id}`, { method: "GET" }, null);
   },
 
   registerSquad: async (tournamentId: string, squad: SquadRegistrationInput): Promise<any> => {

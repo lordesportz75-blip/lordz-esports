@@ -7,7 +7,6 @@ import {
   type TournamentStage,
   type RegistrationItem,
   type LeaderboardEntry,
-  tournamentsData,
   getTournamentBannerUrl,
   DEFAULT_TOURNAMENT_BANNER,
 } from "../data/tournaments";
@@ -100,13 +99,11 @@ export const TournamentDetailPage: React.FC = () => {
           if (data.registrations) setRegistrations(data.registrations);
           if (data.leaderboard) setLeaderboard(data.leaderboard);
         } else {
-          const fallback = tournamentsData.find((t) => t.slug === slug || t.id === slug);
-          if (fallback) setTournament(fallback);
+          setTournament(null);
         }
       })
       .catch(() => {
-        const fallback = tournamentsData.find((t) => t.slug === slug || t.id === slug);
-        if (fallback) setTournament(fallback);
+        setTournament(null);
       })
       .finally(() => {
         setLoading(false);

@@ -68,13 +68,28 @@ const CLIENT_CACHE_TTL = 3 * 60 * 1000; // 3 minutes memory cache
 export function clearClientCache(pattern?: string) {
   if (!pattern) {
     clientCache.clear();
-    return;
-  }
-  for (const key of clientCache.keys()) {
-    if (key.includes(pattern)) {
-      clientCache.delete(key);
+  } else {
+    for (const key of clientCache.keys()) {
+      if (key.includes(pattern)) {
+        clientCache.delete(key);
+      }
     }
   }
+
+  try {
+    if (typeof localStorage !== "undefined") {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith("lordz_swr_")) {
+          if (!pattern || k.includes(pattern)) {
+            keysToRemove.push(k);
+          }
+        }
+      }
+      keysToRemove.forEach((k) => localStorage.removeItem(k));
+    }
+  } catch {}
 }
 
 export async function apiRequest<T = any>(
