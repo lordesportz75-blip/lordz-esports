@@ -52,12 +52,7 @@ export const SEO: React.FC<SEOProps> = ({
     if (typeof window === "undefined") return false;
     const host = window.location.hostname.toLowerCase();
     // Allow indexing ONLY on the intended production domain
-    if (
-      host === "lordesportz.com" ||
-      host === "www.lordesportz.com" ||
-      host === "lordzesports.com" ||
-      host === "www.lordzesports.com"
-    ) {
+    if (host === "lordesportz.com" || host === "www.lordesportz.com") {
       return false;
     }
     // Block indexing on preview URLs, vercel.app, staging, and dev hosts

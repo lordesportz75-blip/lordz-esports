@@ -4,7 +4,7 @@
  */
 
 // Resolves canonical origin: VITE_SITE_URL environment variable takes precedence,
-// strictly falling back to the intended production domain https://lordzesports.com.
+// strictly falling back to the intended production domain https://lordesportz.com.
 // NEVER outputs localhost, staging, or vercel.app preview URLs as canonical, OG, or schema metadata.
 export const getSiteUrl = (): string => {
   const envUrl = import.meta.env.VITE_SITE_URL;
@@ -17,7 +17,7 @@ export const getSiteUrl = (): string => {
   }
 
   // Canonical production domain
-  return "https://lordzesports.com";
+  return "https://lordesportz.com";
 };
 
 export const SITE_URL = getSiteUrl();
