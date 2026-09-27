@@ -181,14 +181,18 @@ export function cacheMiddleware(ttlSeconds: number = 180) {
     // Intercept res.json to store into cache
     const originalJson = res.json.bind(res);
     res.json = (body: any) => {
-      // Only cache successful JSON responses
-      if (res.statusCode >= 200 && res.statusCode < 300) {
+      // Do not cache empty data or error arrays
+      const isEmptyArray = Array.isArray(body?.data) && body.data.length === 0;
+
+      if (res.statusCode >= 200 && res.statusCode < 300 && !isEmptyArray) {
         setCache(cacheKey, body, ttlSeconds).catch(() => {});
         res.setHeader("X-Cache", "MISS");
         res.setHeader(
           "Cache-Control",
-          `public, max-age=${Math.min(ttlSeconds, 60)}, s-maxage=${ttlSeconds}, stale-while-revalidate=86400`
+          `public, max-age=${Math.min(ttlSeconds, 30)}, s-maxage=${ttlSeconds}, stale-while-revalidate=60`
         );
+      } else if (isEmptyArray) {
+        res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
       }
       return originalJson(body);
     };

@@ -153,10 +153,15 @@ const stageSchema = z.object({
 });
 
 // Helper to safely execute Prisma calls with in-memory fallback
-let dbConnected = false;
+let dbConnected = true;
 prisma.$connect()
-  .then(() => { dbConnected = true; })
-  .catch(() => { dbConnected = false; });
+  .then(() => {
+    dbConnected = true;
+  })
+  .catch((err) => {
+    console.warn("Prisma background connect notice:", err?.message);
+    // Keep dbConnected true so individual queries still attempt Neon connection
+  });
 
 // ================= IN-MEMORY RESILIENT STORE =================
 // Only retains dynamically created items when database is offline; initialized empty so deleted tournaments stay deleted
