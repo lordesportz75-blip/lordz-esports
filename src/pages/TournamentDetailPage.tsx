@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { tournamentsApi, getMyTournaments, getMyRoomAccess } from "../api/tournaments";
 import { useAuth } from "../context/AuthContext";
+import { useModals } from "../context/useModals";
 import {
   type Tournament,
   type TournamentStage,
@@ -38,6 +39,7 @@ import { SITE_URL } from "../config/seo";
 export const TournamentDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const { isAuthenticated } = useAuth();
+  const { openLogin, openJoinTournament } = useModals();
 
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [stages, setStages] = useState<TournamentStage[]>([]);
@@ -603,6 +605,14 @@ export const TournamentDetailPage: React.FC = () => {
               ) : (
                 <button
                   onClick={() => {
+                    if (!isAuthenticated) {
+                      if (tournament) {
+                        openJoinTournament(tournament);
+                      } else {
+                        openLogin();
+                      }
+                      return;
+                    }
                     setActiveTab("REGISTRATION");
                     window.scrollTo({ top: 500, behavior: "smooth" });
                   }}
@@ -1031,7 +1041,48 @@ export const TournamentDetailPage: React.FC = () => {
         {/* ================= TAB 2: PUBLIC SQUAD REGISTRATION FORM ================= */}
         {activeTab === "REGISTRATION" && (
           <div className="max-w-3xl mx-auto">
-            {isUserRegistered ? (
+            {!isAuthenticated ? (
+              <div className="p-8 sm:p-10 rounded-2xl bg-[#0D0D12] border-2 border-[#FFBE32]/40 text-center space-y-6 shadow-[0_0_40px_rgba(255,190,50,0.15)]">
+                <div className="w-16 h-16 rounded-2xl bg-[#FFBE32]/10 border border-[#FFBE32]/40 flex items-center justify-center text-[#FFBE32] mx-auto shadow-[0_0_20px_rgba(255,190,50,0.2)]">
+                  <Shield className="h-8 w-8 text-[#FFBE32]" />
+                </div>
+                <div className="space-y-2 max-w-md mx-auto">
+                  <span className="px-3 py-1 rounded-full text-[10px] font-heading font-black tracking-widest bg-[#FFBE32]/20 text-[#FFBE32] border border-[#FFBE32]/30 uppercase">
+                    ATHLETE VERIFICATION
+                  </span>
+                  <h2 className="font-display text-2xl sm:text-3xl uppercase tracking-wider text-white">
+                    LOGIN REQUIRED TO REGISTER
+                  </h2>
+                  <p className="text-xs sm:text-sm text-gray-300 font-body leading-relaxed">
+                    You must be logged in as an athlete or team captain to register your squad for{" "}
+                    <strong className="text-[#FFBE32]">{tournament.title}</strong>. Sign in or create your player profile to reserve your slot.
+                  </p>
+                </div>
+
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (tournament) {
+                        openJoinTournament(tournament);
+                      } else {
+                        openLogin();
+                      }
+                    }}
+                    className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-[#FFBE32] hover:bg-[#FFA000] text-black font-heading font-black text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(255,190,50,0.3)] transition-all cursor-pointer"
+                  >
+                    LOGIN / SIGN UP TO REGISTER
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("ABOUT")}
+                    className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-heading font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
+                  >
+                    View Tournament Details
+                  </button>
+                </div>
+              </div>
+            ) : isUserRegistered ? (
               <div className="p-8 rounded-2xl bg-[#0D0D12] border border-[#22C55E]/40 text-center space-y-5 shadow-[0_0_30px_rgba(34,197,94,0.15)]">
                 <div className="h-16 w-16 rounded-full bg-[#22C55E]/20 border border-[#22C55E] flex items-center justify-center text-[#22C55E] mx-auto">
                   <CheckCircle2 className="h-10 w-10" />

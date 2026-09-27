@@ -117,12 +117,15 @@ export async function apiRequest<T = any>(
   }
 
   const url = getApiUrl(endpoint);
+  const isTournamentsEndpoint = url.includes("/tournaments");
   const isCacheableGet = method === "GET" && !token;
+  const effectiveTtl = isTournamentsEndpoint ? 10 * 1000 : CLIENT_CACHE_TTL; // 10s for tournaments, 3m for other static endpoints
 
   // 1. Check in-memory cache first (0ms)
   if (isCacheableGet) {
     const cached = clientCache.get(url);
-    if (cached && Date.now() - cached.timestamp < CLIENT_CACHE_TTL) {
+    const isEmptyArray = Array.isArray(cached?.data) && cached.data.length === 0;
+    if (cached && !isEmptyArray && Date.now() - cached.timestamp < effectiveTtl) {
       return cached.data as T;
     }
 
@@ -131,18 +134,25 @@ export async function apiRequest<T = any>(
       const local = localStorage.getItem(`lordz_swr_${url}`);
       if (local) {
         const parsed = JSON.parse(local);
-        if (parsed && Date.now() - parsed.timestamp < 10 * 60 * 1000) {
+        const isLocalEmpty = Array.isArray(parsed?.data) && parsed.data.length === 0;
+        
+        // Never serve stale empty array from cache!
+        if (isLocalEmpty) {
+          localStorage.removeItem(`lordz_swr_${url}`);
+        } else if (parsed && Date.now() - parsed.timestamp < (isTournamentsEndpoint ? 30 * 1000 : 10 * 60 * 1000)) {
           // Keep in memory and return
           clientCache.set(url, { data: parsed.data, timestamp: parsed.timestamp });
-          // Fetch fresh in background if older than 30s
-          if (Date.now() - parsed.timestamp > 30 * 1000) {
+          // Fetch fresh in background if older than 15s
+          if (Date.now() - parsed.timestamp > 15 * 1000) {
             fetch(url, { ...options, headers })
               .then(async (r) => {
                 if (r.ok) {
                   const j = await r.json();
                   const d = j.data !== undefined ? j.data : j;
-                  clientCache.set(url, { data: d, timestamp: Date.now() });
-                  localStorage.setItem(`lordz_swr_${url}`, JSON.stringify({ data: d, timestamp: Date.now() }));
+                  if (!(Array.isArray(d) && d.length === 0)) {
+                    clientCache.set(url, { data: d, timestamp: Date.now() });
+                    localStorage.setItem(`lordz_swr_${url}`, JSON.stringify({ data: d, timestamp: Date.now() }));
+                  }
                 }
               })
               .catch(() => {});
@@ -196,10 +206,13 @@ export async function apiRequest<T = any>(
     }
 
     if (isCacheableGet) {
-      clientCache.set(url, { data: result, timestamp: Date.now() });
-      try {
-        localStorage.setItem(`lordz_swr_${url}`, JSON.stringify({ data: result, timestamp: Date.now() }));
-      } catch {}
+      // Only cache valid non-empty data
+      if (!(Array.isArray(result) && result.length === 0)) {
+        clientCache.set(url, { data: result, timestamp: Date.now() });
+        try {
+          localStorage.setItem(`lordz_swr_${url}`, JSON.stringify({ data: result, timestamp: Date.now() }));
+        } catch {}
+      }
     }
 
     return result;

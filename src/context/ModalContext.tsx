@@ -1,6 +1,7 @@
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { type Tournament } from "../data/tournaments";
 import { tournamentsApi } from "../api/tournaments";
+import { useAuth } from "./AuthContext";
 import type { Match } from "../data/matches";
 import type { MediaItem } from "../data/media";
 import type { NewsArticle } from "../data/news";
@@ -12,6 +13,8 @@ import { Modal } from "../components/common/Modal";
 import { ModalContext, type VideoPayload } from "./modalContextDef";
 
 export const ModalProvider = ({ children }: { children: ReactNode }) => {
+  const { isAuthenticated } = useAuth();
+
   // Modal visibility states
   const [joinModalOpen, setJoinModalOpen] = useState(false);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
@@ -21,6 +24,7 @@ export const ModalProvider = ({ children }: { children: ReactNode }) => {
 
   // Active payloads
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
+  const [pendingTournamentForRegister, setPendingTournamentForRegister] = useState<Tournament | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<VideoPayload>({
     title: "FLAME OF GLORY S2 • OFFICIAL TRAILER",
     category: "OFFICIAL STREAM",
@@ -28,7 +32,37 @@ export const ModalProvider = ({ children }: { children: ReactNode }) => {
   });
   const [selectedArticle, setSelectedArticle] = useState<NewsArticle | null>(null);
 
+  // When player successfully logs in, automatically resume pending tournament registration
+  useEffect(() => {
+    if (isAuthenticated && pendingTournamentForRegister) {
+      setSelectedTournament(pendingTournamentForRegister);
+      setJoinModalOpen(true);
+      setPendingTournamentForRegister(null);
+    }
+  }, [isAuthenticated, pendingTournamentForRegister]);
+
   const openJoinTournament = async (tournament?: Tournament) => {
+    // If player is not logged in, prompt them to login first
+    if (!isAuthenticated) {
+      if (tournament) {
+        setSelectedTournament(tournament);
+        setPendingTournamentForRegister(tournament);
+      } else {
+        try {
+          const list = await tournamentsApi.getAll();
+          const active = (list || []).filter(
+            (t) => t.status !== "COMPLETED" && t.status !== "ARCHIVED" && t.status !== "CANCELLED"
+          );
+          if (active.length > 0) {
+            setSelectedTournament(active[0]);
+            setPendingTournamentForRegister(active[0]);
+          }
+        } catch {}
+      }
+      setLoginModalOpen(true);
+      return;
+    }
+
     if (tournament) {
       setSelectedTournament(tournament);
       setJoinModalOpen(true);

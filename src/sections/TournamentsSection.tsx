@@ -96,7 +96,11 @@ export const TournamentsSection = ({
         return false;
       }
 
-      const matchGame = selectedGame === "ALL" || t.gameCategory === selectedGame;
+      const matchGame =
+        selectedGame === "ALL" ||
+        t.gameCategory === selectedGame ||
+        t.game === selectedGame ||
+        (selectedGame === "FREE FIRE" && (t.game?.includes("FREE FIRE") || t.gameCategory?.includes("FREE FIRE")));
       let matchStatus = true;
       if (selectedStatus === "LIVE") {
         matchStatus = t.status === "LIVE" || t.status === "ONGOING";
