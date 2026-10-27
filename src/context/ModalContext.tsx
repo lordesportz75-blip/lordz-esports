@@ -1,5 +1,5 @@
 import { useState, useEffect, type ReactNode } from "react";
-import { type Tournament } from "../data/tournaments";
+import { type Tournament, getDerivedTournamentStatus } from "../data/tournaments";
 import { tournamentsApi } from "../api/tournaments";
 import { useAuth } from "./AuthContext";
 import type { Match } from "../data/matches";
@@ -35,6 +35,11 @@ export const ModalProvider = ({ children }: { children: ReactNode }) => {
   // When player successfully logs in, automatically resume pending tournament registration
   useEffect(() => {
     if (isAuthenticated && pendingTournamentForRegister) {
+      const derived = getDerivedTournamentStatus(pendingTournamentForRegister);
+      if (derived === "COMPLETED" || derived === "REGISTRATION_CLOSED") {
+        setPendingTournamentForRegister(null);
+        return;
+      }
       setSelectedTournament(pendingTournamentForRegister);
       setJoinModalOpen(true);
       setPendingTournamentForRegister(null);
@@ -42,6 +47,16 @@ export const ModalProvider = ({ children }: { children: ReactNode }) => {
   }, [isAuthenticated, pendingTournamentForRegister]);
 
   const openJoinTournament = async (tournament?: Tournament) => {
+    if (tournament) {
+      const derived = getDerivedTournamentStatus(tournament);
+      if (derived === "COMPLETED" || derived === "REGISTRATION_CLOSED") {
+        if (typeof window !== "undefined") {
+          window.location.href = `/tournaments/${tournament.slug || tournament.id}`;
+        }
+        return;
+      }
+    }
+
     // If player is not logged in, prompt them to login first
     if (!isAuthenticated) {
       if (tournament) {
@@ -51,7 +66,7 @@ export const ModalProvider = ({ children }: { children: ReactNode }) => {
         try {
           const list = await tournamentsApi.getAll();
           const active = (list || []).filter(
-            (t) => t.status !== "COMPLETED" && t.status !== "ARCHIVED" && t.status !== "CANCELLED"
+            (t) => getDerivedTournamentStatus(t) === "REGISTRATION_OPEN"
           );
           if (active.length > 0) {
             setSelectedTournament(active[0]);
@@ -72,7 +87,7 @@ export const ModalProvider = ({ children }: { children: ReactNode }) => {
     try {
       const list = await tournamentsApi.getAll();
       const active = (list || []).filter(
-        (t) => t.status !== "COMPLETED" && t.status !== "ARCHIVED" && t.status !== "CANCELLED"
+        (t) => getDerivedTournamentStatus(t) === "REGISTRATION_OPEN"
       );
       if (active.length > 0) {
         setSelectedTournament(active[0]);

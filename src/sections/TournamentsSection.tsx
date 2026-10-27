@@ -2,10 +2,26 @@ import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { SectionHeading } from "../components/common/SectionHeading";
-import { type Tournament, getTournamentBannerUrl, DEFAULT_TOURNAMENT_BANNER } from "../data/tournaments";
+import {
+  type Tournament,
+  getTournamentBannerUrl,
+  DEFAULT_TOURNAMENT_BANNER,
+  getDerivedTournamentStatus,
+  type DerivedTournamentStatus,
+} from "../data/tournaments";
 import { tournamentsApi, getMyTournaments } from "../api/tournaments";
 import { useAuth } from "../context/AuthContext";
-import { Trophy, Calendar, Shield, ArrowRight, CheckCircle2 } from "lucide-react";
+import {
+  Trophy,
+  Calendar,
+  Shield,
+  ArrowRight,
+  CheckCircle2,
+  AlertCircle,
+  Lock,
+  Radio,
+  Bell,
+} from "lucide-react";
 import { formatCurrency, formatDate } from "../utils/formatters";
 
 interface TournamentsSectionProps {
@@ -14,7 +30,7 @@ interface TournamentsSectionProps {
 }
 
 type GameFilter = "ALL" | "FREE FIRE MAX" | "FREE FIRE";
-type StatusFilter = "ALL" | "LIVE" | "UPCOMING";
+type StatusFilter = "ALL" | "REGISTRATION_OPEN" | "LIVE" | "UPCOMING" | "COMPLETED";
 
 export const TournamentsSection = ({
   onSelectTournament,
@@ -101,36 +117,87 @@ export const TournamentsSection = ({
   ];
 
   const statusFilters: { label: string; value: StatusFilter }[] = [
-    { label: "ALL ACTIVE", value: "ALL" },
+    { label: "ALL", value: "ALL" },
+    { label: "REGISTRATION OPEN", value: "REGISTRATION_OPEN" },
     { label: "LIVE NOW", value: "LIVE" },
     { label: "UPCOMING", value: "UPCOMING" },
+    { label: "COMPLETED", value: "COMPLETED" },
   ];
 
-  const filteredTournaments = useMemo(() => {
-    return tournaments.filter((t) => {
-      // Safety guard: filter out any DRAFT/unpublished tournaments
-      if ((t as any).isDraft || (t as any).isPublished === false || t.status === "DRAFT") {
-        return false;
-      }
-      // Completed, Archived, and Cancelled tournaments are automatically removed from the main website
-      if (t.status === "COMPLETED" || t.status === "ARCHIVED" || t.status === "CANCELLED") {
-        return false;
-      }
+  // Base list: only draft tournaments are hidden publicly
+  const nonDraftTournaments = useMemo(() => {
+    return tournaments.filter((t) => !(t as any).isDraft && t.status !== "DRAFT");
+  }, [tournaments]);
 
-      const matchGame =
-        selectedGame === "ALL" ||
-        t.gameCategory === selectedGame ||
-        t.game === selectedGame ||
-        (selectedGame === "FREE FIRE" && (t.game?.includes("FREE FIRE") || t.gameCategory?.includes("FREE FIRE")));
-      let matchStatus = true;
-      if (selectedStatus === "LIVE") {
-        matchStatus = t.status === "LIVE" || t.status === "ONGOING";
-      } else if (selectedStatus === "UPCOMING") {
-        matchStatus = ["UPCOMING", "REGISTRATION_OPEN", "CLOSING_SOON", "FULL", "REGISTRATION_CLOSED"].includes(t.status);
-      }
-      return matchGame && matchStatus;
-    });
-  }, [tournaments, selectedGame, selectedStatus]);
+  // Sort order: Live, Registration Open, Upcoming, Registration Closed, then Completed (newest first)
+  const statusPriority: Record<DerivedTournamentStatus, number> = {
+    LIVE: 1,
+    REGISTRATION_OPEN: 2,
+    UPCOMING: 3,
+    REGISTRATION_CLOSED: 4,
+    COMPLETED: 5,
+  };
+
+  const filteredTournaments = useMemo(() => {
+    return nonDraftTournaments
+      .filter((t) => {
+        const matchGame =
+          selectedGame === "ALL" ||
+          t.gameCategory === selectedGame ||
+          t.game === selectedGame ||
+          (selectedGame === "FREE FIRE" && (t.game?.includes("FREE FIRE") || t.gameCategory?.includes("FREE FIRE")));
+
+        const derived = getDerivedTournamentStatus(t);
+        let matchStatus = true;
+        if (selectedStatus === "ALL") {
+          matchStatus = true;
+        } else {
+          matchStatus = derived === selectedStatus;
+        }
+        return matchGame && matchStatus;
+      })
+      .sort((a, b) => {
+        const statusA = getDerivedTournamentStatus(a);
+        const statusB = getDerivedTournamentStatus(b);
+        const priorityDiff = (statusPriority[statusA] || 99) - (statusPriority[statusB] || 99);
+        if (priorityDiff !== 0) return priorityDiff;
+
+        const dateA = new Date(a.createdAt || a.startDate || a.date || 0).getTime();
+        const dateB = new Date(b.createdAt || b.startDate || b.date || 0).getTime();
+        return dateB - dateA;
+      });
+  }, [nonDraftTournaments, selectedGame, selectedStatus]);
+
+  const emptyTabInfo = useMemo(() => {
+    if (selectedStatus === "COMPLETED") {
+      return {
+        title: "No Completed Tournaments Yet",
+        subtitle: "Tournament results, leaderboards, and champions will appear here once events conclude.",
+      };
+    }
+    if (selectedStatus === "LIVE") {
+      return {
+        title: "No Live Tournaments Right Now",
+        subtitle: "No matches are broadcasting live right now. Check back when the next tournament goes live!",
+      };
+    }
+    if (selectedStatus === "REGISTRATION_OPEN") {
+      return {
+        title: "No Tournaments Open For Registration",
+        subtitle: "All current rosters are closed or full. Stay tuned for upcoming circuit announcements!",
+      };
+    }
+    if (selectedStatus === "UPCOMING") {
+      return {
+        title: "No Upcoming Tournaments",
+        subtitle: "Stay tuned for new tournament circuits, scrims, and championships.",
+      };
+    }
+    return {
+      title: "No Tournaments Found",
+      subtitle: `No ${selectedGame !== "ALL" ? selectedGame + " " : ""}tournaments found matching this filter combination.`,
+    };
+  }, [selectedStatus, selectedGame]);
 
   return (
     <section
@@ -169,7 +236,7 @@ export const TournamentsSection = ({
           </div>
 
           {/* Status filter tabs */}
-          <div className="flex items-center gap-1 bg-[#0D0D10] p-1 rounded-lg border border-white/10 max-w-full overflow-x-auto">
+          <div className="flex flex-wrap items-center justify-center gap-1 bg-[#0D0D10] p-1 rounded-lg border border-white/10 max-w-full overflow-x-auto">
             {statusFilters.map((sf) => (
               <button
                 key={sf.value}
@@ -204,7 +271,13 @@ export const TournamentsSection = ({
             <AnimatePresence mode="popLayout">
             {filteredTournaments.length > 0 ? (
               filteredTournaments.map((t, index) => {
-                const isLive = t.status === "LIVE";
+                const derivedStatus = getDerivedTournamentStatus(t);
+                const isLive = derivedStatus === "LIVE";
+                const isCompleted = derivedStatus === "COMPLETED";
+                const isClosed = derivedStatus === "REGISTRATION_CLOSED";
+                const isUpcoming = derivedStatus === "UPCOMING";
+                const isOpen = derivedStatus === "REGISTRATION_OPEN";
+
                 const userReg = userRegistrationMap.get(t.id) || (t.slug ? userRegistrationMap.get(t.slug) : undefined);
                 const isUserRegistered = Boolean(userReg);
                 const isConfirmed =
@@ -252,53 +325,42 @@ export const TournamentsSection = ({
                           {t.game}
                         </span>
 
-                        {isUserRegistered ? (
-                          <span
-                            className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[10px] font-heading font-black uppercase tracking-wider backdrop-blur-md ${
-                              isConfirmed
-                                ? "bg-[#22C55E]/20 text-[#22C55E] border border-[#22C55E]/40 shadow-[0_0_12px_rgba(34,197,94,0.3)]"
-                                : isPendingInvitation
-                                ? "bg-amber-500/20 text-[#FFBE32] border border-[#FFBE32]/40 animate-pulse"
-                                : "bg-[#FFBE32]/20 text-[#FFBE32] border border-[#FFBE32]/40"
-                            }`}
-                          >
-                            <CheckCircle2 className="h-3 w-3" />
-                            {isConfirmed
-                              ? "REGISTERED ✓"
-                              : isPendingInvitation
-                              ? "INVITATION PENDING"
-                              : isUnderReview
-                              ? "PAYMENT PENDING"
-                              : "REGISTERED"}
-                          </span>
-                        ) : (() => {
-                          const isFull = t.status === "FULL" || (t.availableSlots !== undefined && t.availableSlots <= 0);
-                          const isClosingSoon = t.status === "CLOSING_SOON" || (!isFull && t.availableSlots !== undefined && t.availableSlots <= 5);
-
+                        {(() => {
+                          if (isCompleted) {
+                            return (
+                              <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[10px] font-heading font-black uppercase tracking-wider backdrop-blur-md bg-zinc-800/95 text-emerald-400 border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                                <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                                COMPLETED
+                              </span>
+                            );
+                          }
                           if (isLive) {
                             return (
-                              <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[10px] font-heading font-bold uppercase tracking-wider backdrop-blur-md bg-red-950/80 text-red-400 border border-red-500/30 animate-pulse">
-                                <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                              <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[10px] font-heading font-black uppercase tracking-wider backdrop-blur-md bg-rose-950/90 text-rose-400 border border-rose-500/40 shadow-[0_0_12px_rgba(244,63,94,0.3)] animate-pulse">
+                                <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
                                 LIVE NOW
                               </span>
                             );
                           }
-                          if (isFull) {
+                          if (isClosed) {
                             return (
-                              <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[10px] font-heading font-bold uppercase tracking-wider backdrop-blur-md bg-red-950/90 text-red-400 border border-red-500/40">
-                                SLOTS FULL
+                              <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[10px] font-heading font-black uppercase tracking-wider backdrop-blur-md bg-amber-950/90 text-amber-400 border border-amber-500/40">
+                                <AlertCircle className="h-3 w-3 text-amber-400" />
+                                REGISTRATION CLOSED
                               </span>
                             );
                           }
-                          if (isClosingSoon) {
+                          if (isUpcoming) {
                             return (
-                              <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[10px] font-heading font-bold uppercase tracking-wider backdrop-blur-md bg-amber-500/20 text-[#FFBE32] border border-[#FFBE32]/50 animate-pulse">
-                                CLOSING SOON
+                              <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[10px] font-heading font-black uppercase tracking-wider backdrop-blur-md bg-sky-950/90 text-sky-400 border border-sky-500/40 shadow-[0_0_10px_rgba(14,165,233,0.2)]">
+                                <Calendar className="h-3 w-3 text-sky-400" />
+                                UPCOMING
                               </span>
                             );
                           }
                           return (
-                            <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[10px] font-heading font-bold uppercase tracking-wider backdrop-blur-md bg-emerald-950/70 text-emerald-400 border border-emerald-500/30">
+                            <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[10px] font-heading font-black uppercase tracking-wider backdrop-blur-md bg-emerald-950/80 text-emerald-400 border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                               REGISTRATION OPEN
                             </span>
                           );
@@ -308,9 +370,9 @@ export const TournamentsSection = ({
                       {/* Live Dynamic Registration Count Banner */}
                       <div className="absolute bottom-2 left-3 px-2.5 py-1 rounded bg-black/80 border border-[#FFBE32]/40 text-[#FFBE32] font-heading font-extrabold text-[10px] uppercase tracking-wider backdrop-blur-md flex items-center gap-1.5">
                         <span>
-                          {t.confirmedTeams ?? t.registeredTeams ?? 0} / {t.totalTeams || 32} TEAMS CONFIRMED
+                          {t.confirmedTeams ?? t.registeredTeams ?? 0} / {t.totalTeams || 32} TEAMS REGISTERED
                         </span>
-                        {t.availableSlots !== undefined && (
+                        {!isCompleted && !isClosed && t.availableSlots !== undefined && (
                           <span className="text-gray-400 font-mono text-[9px]">
                             ({t.availableSlots} SLOTS LEFT)
                           </span>
@@ -358,32 +420,76 @@ export const TournamentsSection = ({
 
                     {/* Card Footer Actions */}
                     <div className="p-6 pt-0 flex gap-2">
-                      {isUserRegistered ? (
-                        <Link
-                          to="/my-tournaments"
-                          className="flex-1 py-2.5 px-3 rounded font-heading text-xs font-bold uppercase tracking-wider bg-[#22C55E]/15 hover:bg-[#22C55E]/25 text-[#22C55E] border border-[#22C55E]/40 text-center transition-all duration-200 flex items-center justify-center gap-1.5 shadow-[0_0_10px_rgba(34,197,94,0.15)]"
-                        >
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          <span>VIEW IN MY TOURNAMENTS</span>
-                        </Link>
-                      ) : (() => {
-                        const isFull = t.status === "FULL" || (t.availableSlots !== undefined && t.availableSlots <= 0);
-                        if (isFull) {
+                      {(() => {
+                        if (isCompleted) {
                           return (
                             <Link
                               to={`/tournaments/${t.slug || t.id}`}
-                              className="flex-1 py-2.5 px-3 rounded font-heading text-xs font-bold uppercase tracking-wider bg-white/5 border border-white/10 text-gray-400 hover:text-white text-center transition-all duration-200"
+                              className="flex-1 py-2.5 px-3 rounded font-heading text-xs font-bold uppercase tracking-wider bg-zinc-800 hover:bg-zinc-700 text-white border border-white/10 text-center transition-all duration-200 flex items-center justify-center gap-1.5 shadow-[0_0_10px_rgba(0,0,0,0.5)]"
                             >
-                              SLOTS FULL • VIEW ARENA
+                              <Trophy className="h-3.5 w-3.5 text-[#FFBE32]" />
+                              <span>VIEW RESULTS</span>
                             </Link>
                           );
                         }
+
+                        if (isUserRegistered) {
+                          return (
+                            <Link
+                              to="/my-tournaments"
+                              className="flex-1 py-2.5 px-3 rounded font-heading text-xs font-bold uppercase tracking-wider bg-[#22C55E]/15 hover:bg-[#22C55E]/25 text-[#22C55E] border border-[#22C55E]/40 text-center transition-all duration-200 flex items-center justify-center gap-1.5 shadow-[0_0_10px_rgba(34,197,94,0.15)]"
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              <span>VIEW IN MY TOURNAMENTS</span>
+                            </Link>
+                          );
+                        }
+
+                        if (isLive) {
+                          return (
+                            <Link
+                              to={t.streamUrl || `/tournaments/${t.slug || t.id}`}
+                              target={t.streamUrl ? "_blank" : undefined}
+                              rel={t.streamUrl ? "noopener noreferrer" : undefined}
+                              className="flex-1 py-2.5 px-3 rounded font-heading text-xs font-bold uppercase tracking-wider bg-rose-600 hover:bg-rose-500 text-white text-center transition-all duration-200 shadow-[0_0_12px_rgba(244,63,94,0.35)] flex items-center justify-center gap-1.5"
+                            >
+                              <Radio className="h-3.5 w-3.5 animate-pulse" />
+                              <span>VIEW LIVE / WATCH</span>
+                            </Link>
+                          );
+                        }
+
+                        if (isClosed) {
+                          return (
+                            <button
+                              disabled
+                              className="flex-1 py-2.5 px-3 rounded font-heading text-xs font-bold uppercase tracking-wider bg-white/5 border border-white/10 text-gray-400 cursor-not-allowed text-center transition-all duration-200 flex items-center justify-center gap-1.5 opacity-70"
+                            >
+                              <Lock className="h-3.5 w-3.5" />
+                              <span>REGISTRATION CLOSED</span>
+                            </button>
+                          );
+                        }
+
+                        if (isUpcoming) {
+                          return (
+                            <Link
+                              to={`/tournaments/${t.slug || t.id}`}
+                              className="flex-1 py-2.5 px-3 rounded font-heading text-xs font-bold uppercase tracking-wider bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/40 text-center transition-all duration-200 flex items-center justify-center gap-1.5"
+                            >
+                              <Bell className="h-3.5 w-3.5" />
+                              <span>NOTIFY ME / VIEW DETAILS</span>
+                            </Link>
+                          );
+                        }
+
+                        // Registration Open
                         return (
                           <button
                             onClick={() => onSelectTournament(t)}
-                            className="flex-1 py-2.5 px-3 rounded font-heading text-xs font-bold uppercase tracking-wider bg-[#FFBE32] hover:bg-[#FFA000] text-black text-center transition-all duration-200 cursor-pointer shadow-[0_0_12px_rgba(255,190,50,0.25)]"
+                            className="flex-1 py-2.5 px-3 rounded font-heading text-xs font-bold uppercase tracking-wider bg-[#FFBE32] hover:bg-[#FFA000] text-black text-center transition-all duration-200 cursor-pointer shadow-[0_0_12px_rgba(255,190,50,0.25)] font-black"
                           >
-                            Register Squad Now
+                            JOIN / REGISTER
                           </button>
                         );
                       })()}
@@ -399,7 +505,7 @@ export const TournamentsSection = ({
                   </motion.div>
                 );
               })
-            ) : tournaments.length === 0 || tournaments.every((t) => t.status === "COMPLETED" || t.status === "ARCHIVED" || t.status === "CANCELLED") ? (
+            ) : nonDraftTournaments.length === 0 ? (
               <div className="col-span-full py-20 px-6 rounded-2xl bg-[#0D0D10]/80 border border-white/10 text-center max-w-lg mx-auto shadow-2xl backdrop-blur-md">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[#FFBE32]/10 border border-[#FFBE32]/30 flex items-center justify-center text-[#FFBE32]">
                   <Trophy className="w-8 h-8 opacity-70" />
@@ -408,21 +514,24 @@ export const TournamentsSection = ({
                   NO TOURNAMENTS AVAILABLE
                 </h3>
                 <p className="font-body text-xs text-gray-400 mt-2 leading-relaxed">
-                  There are currently no active tournaments open for registration. Check back soon or join our community for upcoming circuit schedules!
+                  There are currently no tournaments available. Check back soon or join our community for upcoming circuit schedules!
                 </p>
               </div>
             ) : (
-              <div className="col-span-full py-16 text-center text-gray-500">
+              <div className="col-span-full py-16 px-6 text-center max-w-md mx-auto">
                 <Trophy className="h-12 w-12 mx-auto mb-3 opacity-30 text-[#FFBE32]" />
-                <p className="font-heading text-base uppercase tracking-wider text-gray-400">
-                  No tournaments found for this filter combination.
+                <h4 className="font-heading text-base font-bold uppercase tracking-wider text-white">
+                  {emptyTabInfo.title}
+                </h4>
+                <p className="font-body text-xs text-gray-400 mt-1.5 leading-relaxed">
+                  {emptyTabInfo.subtitle}
                 </p>
                 <button
                   onClick={() => {
                     setSelectedGame("ALL");
                     setSelectedStatus("ALL");
                   }}
-                  className="mt-3 text-xs text-[#FFBE32] underline cursor-pointer"
+                  className="mt-4 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-[#FFBE32] border border-white/10 cursor-pointer font-heading uppercase tracking-wider transition-colors inline-block"
                 >
                   Reset filters
                 </button>
@@ -435,4 +544,3 @@ export const TournamentsSection = ({
     </section>
   );
 };
-

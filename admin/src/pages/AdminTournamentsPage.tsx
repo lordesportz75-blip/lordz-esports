@@ -627,10 +627,15 @@ export const AdminTournamentsPage: React.FC = () => {
   // Quick Status Toggle Handler (e.g. Mark as COMPLETED or Reopen)
   const handleQuickStatus = async (id: string, newStatus: string) => {
     try {
-      await tournamentsApi.update(id, { status: newStatus as any });
+      const updateData: any = { status: newStatus as any };
+      if (newStatus === "REGISTRATION_OPEN") {
+        updateData.regDeadline = null;
+        updateData.regEndDate = null;
+      }
+      await tournamentsApi.update(id, updateData);
       clearClientCache("tournaments");
       setTournaments((prev) =>
-        prev.map((t) => (t.id === id ? { ...t, status: newStatus as any } : t))
+        prev.map((t) => (t.id === id ? { ...t, ...updateData } : t))
       );
       if (statusFilter !== "ALL" && statusFilter !== newStatus) {
         setTournaments((prev) => prev.filter((t) => t.id !== id));

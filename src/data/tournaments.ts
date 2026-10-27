@@ -17,6 +17,61 @@ export function getTournamentBannerUrl(bannerImage?: string | null, title?: stri
   }
   return bannerImage;
 }
+export type DerivedTournamentStatus =
+  | "LIVE"
+  | "REGISTRATION_OPEN"
+  | "UPCOMING"
+  | "REGISTRATION_CLOSED"
+  | "COMPLETED";
+
+export function getDerivedTournamentStatus(t: Partial<Tournament>): DerivedTournamentStatus {
+  const rawStatus = (t.status || "").toUpperCase();
+
+  // 1. Completed / Archived / Cancelled
+  if (rawStatus === "COMPLETED" || rawStatus === "ARCHIVED" || rawStatus === "CANCELLED") {
+    return "COMPLETED";
+  }
+
+  // 2. Live / Ongoing
+  if (rawStatus === "LIVE" || rawStatus === "ONGOING") {
+    return "LIVE";
+  }
+
+  const now = Date.now();
+
+  // Check capacity
+  const confirmed = t.confirmedTeams ?? t.registeredTeams ?? 0;
+  const total = t.totalTeams || 0;
+  const isFull = (t.availableSlots !== undefined && t.availableSlots <= 0) || (total > 0 && confirmed >= total);
+
+  // Check deadline / end dates
+  const deadlinePassed = Boolean(
+    (t.regDeadline && !isNaN(new Date(t.regDeadline).getTime()) && new Date(t.regDeadline).getTime() < now) ||
+    (t.regEndDate && !isNaN(new Date(t.regEndDate).getTime()) && new Date(t.regEndDate).getTime() < now)
+  );
+
+  // Check registration start date (in future?)
+  const notStartedYet = Boolean(
+    t.regStartDate && !isNaN(new Date(t.regStartDate).getTime()) && new Date(t.regStartDate).getTime() > now
+  );
+
+  // 3. Registration Closed
+  if (rawStatus === "REGISTRATION_CLOSED" || isFull) {
+    return "REGISTRATION_CLOSED";
+  }
+
+  if (deadlinePassed && rawStatus !== "REGISTRATION_OPEN") {
+    return "REGISTRATION_CLOSED";
+  }
+
+  // 4. Upcoming
+  if (rawStatus === "UPCOMING" || notStartedYet) {
+    return "UPCOMING";
+  }
+
+  // Default to REGISTRATION_OPEN
+  return "REGISTRATION_OPEN";
+}
 
 export interface Tournament {
   id: string;

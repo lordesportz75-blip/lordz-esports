@@ -490,24 +490,26 @@ export const getTournaments = async (req: Request, res: Response, next: NextFunc
         const authHeader = req.headers.authorization;
         const isRequestFromAdmin = Boolean(authHeader && authHeader.startsWith("Bearer ")) || req.query.includeDrafts === "true";
 
-        if (!isRequestFromAdmin && status !== "DRAFT") {
+        if (!isRequestFromAdmin) {
           where.isDraft = false;
-          where.isPublished = true;
+          where.status = { not: "DRAFT" };
         }
 
         if (status && status !== "ALL") {
           const s = String(status).toUpperCase();
           if (s === "UPCOMING") {
-            where.status = { in: ["UPCOMING", "REGISTRATION_OPEN", "CLOSING_SOON", "FULL", "REGISTRATION_CLOSED"] };
-          } else if (s === "LIVE") {
+            where.status = "UPCOMING";
+          } else if (s === "LIVE" || s === "LIVE NOW") {
             where.status = { in: ["LIVE", "ONGOING"] };
           } else if (s === "COMPLETED") {
             where.status = { in: ["COMPLETED", "ARCHIVED"] };
-          } else {
+          } else if (s === "REGISTRATION_OPEN") {
+            where.status = { in: ["REGISTRATION_OPEN", "OPEN"] };
+          } else if (s === "REGISTRATION_CLOSED") {
+            where.status = { in: ["REGISTRATION_CLOSED", "FULL"] };
+          } else if (isRequestFromAdmin || s !== "DRAFT") {
             where.status = s;
           }
-        } else if (!isRequestFromAdmin) {
-          where.status = { not: "DRAFT" };
         }
         if (gameCategory && gameCategory !== "ALL") where.gameCategory = String(gameCategory);
         if (featured !== undefined) where.featured = featured === "true";
@@ -544,16 +546,25 @@ export const getTournaments = async (req: Request, res: Response, next: NextFunc
           const availableSlots = Math.max(0, totalSlots - confirmedCount);
 
           let dynamicStatus = t.status;
-          if (t.status === "CANCELLED" || t.status === "COMPLETED") {
-            dynamicStatus = t.status;
-          } else if (confirmedCount >= totalSlots) {
+          if (t.status === "CANCELLED" || t.status === "COMPLETED" || t.status === "ARCHIVED") {
+            dynamicStatus = "COMPLETED";
+          } else if (t.status === "LIVE" || t.status === "ONGOING") {
+            dynamicStatus = "LIVE";
+          } else if (confirmedCount >= totalSlots && totalSlots > 0) {
             dynamicStatus = "FULL";
-          } else if ((t as any).regDeadline && new Date() > new Date((t as any).regDeadline)) {
+          } else if (t.status === "REGISTRATION_CLOSED") {
             dynamicStatus = "REGISTRATION_CLOSED";
           } else if (
-            (t as any).regDeadline &&
-            new Date((t as any).regDeadline).getTime() - Date.now() < 24 * 3600 * 1000 &&
-            new Date((t as any).regDeadline).getTime() > Date.now()
+            (t.regDeadline && new Date() > new Date(t.regDeadline)) ||
+            (t.regEndDate && new Date() > new Date(t.regEndDate))
+          ) {
+            if (t.status !== "REGISTRATION_OPEN") {
+              dynamicStatus = "REGISTRATION_CLOSED";
+            }
+          } else if (
+            t.regDeadline &&
+            new Date(t.regDeadline).getTime() - Date.now() < 24 * 3600 * 1000 &&
+            new Date(t.regDeadline).getTime() > Date.now()
           ) {
             dynamicStatus = "CLOSING_SOON";
           }
@@ -577,16 +588,21 @@ export const getTournaments = async (req: Request, res: Response, next: NextFunc
     }
 
     // In-memory fallback — always exclude DRAFT/unpublished from public listing
-    let result = [...memoryTournaments].filter((t) => !t.isDraft && t.isPublished !== false && t.status !== "DRAFT");
+    const isFallbackAdmin = Boolean(req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) || req.query.includeDrafts === "true";
+    let result = [...memoryTournaments].filter((t) => isFallbackAdmin || (!t.isDraft && t.status !== "DRAFT"));
     if (status && status !== "ALL") {
       const s = String(status).toUpperCase();
       if (s === "UPCOMING") {
-        result = result.filter((t) => ["UPCOMING", "REGISTRATION_OPEN", "CLOSING_SOON", "FULL", "REGISTRATION_CLOSED"].includes(t.status));
-      } else if (s === "LIVE") {
+        result = result.filter((t) => t.status === "UPCOMING");
+      } else if (s === "LIVE" || s === "LIVE NOW") {
         result = result.filter((t) => ["LIVE", "ONGOING"].includes(t.status));
       } else if (s === "COMPLETED") {
         result = result.filter((t) => ["COMPLETED", "ARCHIVED"].includes(t.status));
-      } else if (s !== "DRAFT") {
+      } else if (s === "REGISTRATION_OPEN") {
+        result = result.filter((t) => ["REGISTRATION_OPEN", "OPEN"].includes(t.status));
+      } else if (s === "REGISTRATION_CLOSED") {
+        result = result.filter((t) => ["REGISTRATION_CLOSED", "FULL"].includes(t.status));
+      } else if (isFallbackAdmin || s !== "DRAFT") {
         result = result.filter((t) => t.status === s);
       }
     }
@@ -679,6 +695,13 @@ export const getTournamentById = async (req: Request, res: Response, next: NextF
         });
 
         if (tournament) {
+          const authHeader = req.headers.authorization;
+          const isRequestFromAdmin = Boolean(authHeader && authHeader.startsWith("Bearer "));
+          if (!isRequestFromAdmin && (tournament.isDraft || tournament.status === "DRAFT")) {
+            res.status(404).json({ success: false, message: "Tournament not found" });
+            return;
+          }
+
           const regs: any[] = tournament.registrations || [];
           const total = regs.length;
           const approved = regs.filter((r: any) => r.status === "CONFIRMED" || r.status === "APPROVED").length;
@@ -734,8 +757,10 @@ export const getTournamentById = async (req: Request, res: Response, next: NextF
     }
 
     // In-memory fallback
+    const authHeader = req.headers.authorization;
+    const isRequestFromAdmin = Boolean(authHeader && authHeader.startsWith("Bearer "));
     const tournament = memoryTournaments.find((t) => t.id === id || t.slug === id);
-    if (!tournament) {
+    if (!tournament || (!isRequestFromAdmin && (tournament.isDraft || tournament.status === "DRAFT"))) {
       res.status(404).json({ success: false, message: "Tournament not found" });
       return;
     }
@@ -933,6 +958,15 @@ export const updateTournament = async (req: AuthenticatedRequest, res: Response,
     if (dbConnected) {
       try {
         const updatePayload: any = { ...data };
+        if (rawData.status === "REGISTRATION_OPEN") {
+          updatePayload.status = "REGISTRATION_OPEN";
+          if (rawData.regDeadline === undefined) {
+            updatePayload.regDeadline = null;
+          }
+          if (rawData.regEndDate === undefined) {
+            updatePayload.regEndDate = null;
+          }
+        }
         if (data.rosterLockDate !== undefined) {
           updatePayload.rosterLockDate = parsePrismaDateTime(data.rosterLockDate);
         }
@@ -957,6 +991,11 @@ export const updateTournament = async (req: AuthenticatedRequest, res: Response,
     if (index === -1) {
       res.status(404).json({ success: false, message: "Tournament not found" });
       return;
+    }
+
+    if (rawData.status === "REGISTRATION_OPEN") {
+      if (rawData.regDeadline === undefined) memoryTournaments[index].regDeadline = null;
+      if (rawData.regEndDate === undefined) memoryTournaments[index].regEndDate = null;
     }
 
     memoryTournaments[index] = {
@@ -1208,12 +1247,24 @@ export const registerSquad = async (req: AuthenticatedRequest, res: Response, ne
     }
 
     // 2. Validate tournament status
-    if (tournament.status === "COMPLETED" || tournament.status === "CANCELLED" || tournament.status === "REGISTRATION_CLOSED") {
+    if (
+      tournament.status === "COMPLETED" ||
+      tournament.status === "ARCHIVED" ||
+      tournament.status === "CANCELLED" ||
+      tournament.status === "REGISTRATION_CLOSED" ||
+      tournament.status === "DRAFT" ||
+      tournament.isDraft
+    ) {
       res.status(400).json({ success: false, message: "Registration for this tournament is closed" });
       return;
     }
 
     if (tournament.regDeadline && new Date() > new Date(tournament.regDeadline)) {
+      res.status(400).json({ success: false, message: "Tournament registration deadline has passed" });
+      return;
+    }
+
+    if (tournament.regEndDate && new Date() > new Date(tournament.regEndDate)) {
       res.status(400).json({ success: false, message: "Tournament registration deadline has passed" });
       return;
     }

@@ -10,6 +10,7 @@ import {
   type LeaderboardEntry,
   getTournamentBannerUrl,
   DEFAULT_TOURNAMENT_BANNER,
+  getDerivedTournamentStatus,
 } from "../data/tournaments";
 import {
   Trophy,
@@ -192,6 +193,9 @@ export const TournamentDetailPage: React.FC = () => {
   const allowWaitlist = Boolean((tournament as any)?.allowWaitlist);
   const feeDisplay = tournament ? formatCurrency(tournament.feeAmount ?? tournament.entryFee) : "";
   const prizeDisplay = tournament ? formatCurrency(tournament.prizePool) : "";
+  const derivedStatus = tournament ? getDerivedTournamentStatus(tournament) : "REGISTRATION_OPEN";
+  const isCompletedTournament = derivedStatus === "COMPLETED";
+  const isRegistrationClosed = derivedStatus === "REGISTRATION_CLOSED";
 
   const isUserRegistered = Boolean(userRegistration);
   const regStatus = userRegistration?.registration?.status || userRegistration?.status;
@@ -604,7 +608,16 @@ export const TournamentDetailPage: React.FC = () => {
                 </div>
               ) : (
                 <button
+                  disabled={isRegistrationClosed && !isCompletedTournament}
                   onClick={() => {
+                    if (isCompletedTournament) {
+                      setActiveTab("STANDINGS");
+                      window.scrollTo({ top: 500, behavior: "smooth" });
+                      return;
+                    }
+                    if (isRegistrationClosed) {
+                      return;
+                    }
                     if (!isAuthenticated) {
                       if (tournament) {
                         openJoinTournament(tournament);
@@ -616,13 +629,21 @@ export const TournamentDetailPage: React.FC = () => {
                     setActiveTab("REGISTRATION");
                     window.scrollTo({ top: 500, behavior: "smooth" });
                   }}
-                  className={`mt-5 w-full py-3 rounded-xl font-heading text-xs font-extrabold uppercase tracking-wider text-black text-center transition-all cursor-pointer ${
-                    isTournamentFull && allowWaitlist
-                      ? "bg-amber-400 hover:bg-amber-300 shadow-[0_0_15px_rgba(251,191,36,0.4)]"
-                      : "bg-[#FFBE32] hover:bg-[#FFA000] shadow-[0_0_15px_rgba(255,190,50,0.3)]"
+                  className={`mt-5 w-full py-3 rounded-xl font-heading text-xs font-extrabold uppercase tracking-wider text-center transition-all ${
+                    isCompletedTournament
+                      ? "bg-zinc-800 hover:bg-zinc-700 text-white border border-white/10 cursor-pointer shadow-[0_0_15px_rgba(0,0,0,0.5)]"
+                      : isRegistrationClosed
+                      ? "bg-white/5 border border-white/10 text-gray-400 cursor-not-allowed opacity-70"
+                      : isTournamentFull && allowWaitlist
+                      ? "bg-amber-400 hover:bg-amber-300 text-black shadow-[0_0_15px_rgba(251,191,36,0.4)] cursor-pointer"
+                      : "bg-[#FFBE32] hover:bg-[#FFA000] text-black shadow-[0_0_15px_rgba(255,190,50,0.3)] cursor-pointer"
                   }`}
                 >
-                  {isTournamentFull && allowWaitlist
+                  {isCompletedTournament
+                    ? "View Tournament Results"
+                    : isRegistrationClosed
+                    ? "Registration Closed"
+                    : isTournamentFull && allowWaitlist
                     ? "Join Priority Waitlist"
                     : isTournamentFull
                     ? "Tournament Full"
