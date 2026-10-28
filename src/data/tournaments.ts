@@ -77,6 +77,8 @@ export interface Tournament {
   id: string;
   slug?: string;
   title: string;
+  createdAt?: string | null;
+  updatedAt?: string | null;
   game: string;
   gameCategory: "FREE FIRE" | "FREE FIRE MAX" | string;
   status: "DRAFT" | "REGISTRATION_OPEN" | "REGISTRATION_CLOSED" | "ONGOING" | "COMPLETED" | "CANCELLED" | "ARCHIVED" | "UPCOMING" | "LIVE" | string;

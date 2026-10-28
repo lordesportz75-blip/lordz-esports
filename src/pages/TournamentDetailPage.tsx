@@ -611,7 +611,7 @@ export const TournamentDetailPage: React.FC = () => {
                   disabled={isRegistrationClosed && !isCompletedTournament}
                   onClick={() => {
                     if (isCompletedTournament) {
-                      setActiveTab("STANDINGS");
+                      setActiveTab("LEADERBOARD");
                       window.scrollTo({ top: 500, behavior: "smooth" });
                       return;
                     }

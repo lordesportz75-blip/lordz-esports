@@ -276,22 +276,9 @@ export const TournamentsSection = ({
                 const isCompleted = derivedStatus === "COMPLETED";
                 const isClosed = derivedStatus === "REGISTRATION_CLOSED";
                 const isUpcoming = derivedStatus === "UPCOMING";
-                const isOpen = derivedStatus === "REGISTRATION_OPEN";
 
                 const userReg = userRegistrationMap.get(t.id) || (t.slug ? userRegistrationMap.get(t.slug) : undefined);
                 const isUserRegistered = Boolean(userReg);
-                const isConfirmed =
-                  userReg?.status === "CONFIRMED" ||
-                  userReg?.status === "APPROVED" ||
-                  userReg?.paymentStatus === "VERIFIED" ||
-                  userReg?.paymentStatus === "PAID" ||
-                  userReg?.paymentStatus === "COMPLETED";
-                const isUnderReview =
-                  !isConfirmed &&
-                  (userReg?.status === "PAYMENT_UNDER_REVIEW" ||
-                    userReg?.paymentStatus === "UNDER_REVIEW" ||
-                    userReg?.paymentStatus === "PENDING_VERIFICATION");
-                const isPendingInvitation = Boolean(userReg?.isInvitationPending);
 
                 return (
                   <motion.div
