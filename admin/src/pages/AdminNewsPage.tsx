@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { newsApi } from "../api/news";
 import { adminApi } from "../api/admin";
-import { type NewsArticle, newsData } from "../data/news";
+import { type NewsArticle } from "../data/news";
 import {
   Plus,
   Edit,
@@ -62,9 +62,9 @@ export const AdminNewsPage: React.FC = () => {
     setLoading(true);
     try {
       const data = await newsApi.getAll();
-      setArticles(data);
+      setArticles(Array.isArray(data) ? data : []);
     } catch {
-      setArticles(newsData);
+      setArticles([]);
     } finally {
       setLoading(false);
     }
@@ -470,7 +470,7 @@ export const AdminNewsPage: React.FC = () => {
                   required
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="e.g. FLAME OF GLORY S2 GRAND FINALS COMMENCES WITH ₹50,000 AT STAKE"
+                  placeholder="e.g. NATIONAL CHAMPIONSHIP GRAND FINALS ANNOUNCED"
                   className="w-full rounded-xl border border-white/15 bg-black/60 px-3.5 py-2.5 text-sm text-white focus:border-[#FFBE32] focus:outline-none font-medium"
                 />
               </div>

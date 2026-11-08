@@ -22,6 +22,7 @@ import * as uploadCtrl from "../controllers/uploadController.js";
 import * as planCtrl from "../controllers/partnerPlanController.js";
 import * as votingCtrl from "../controllers/votingController.js";
 import { cacheMiddleware, delCache, getCacheStatus } from "../config/cache.js";
+import { loginLimiter } from "../middleware/rateLimiter.js";
 
 const invalidate = (pattern: string) => (_req: any, _res: any, next: any) => {
   delCache(pattern).catch(() => {});
@@ -36,7 +37,7 @@ router.get("/cache/status", (_req, res) => {
 });
 
 // ================= AUTH ROUTES =================
-router.post("/auth/login", authCtrl.login);
+router.post("/auth/login", loginLimiter, authCtrl.login);
 router.post("/auth/register", authCtrl.register);
 router.post("/auth/forgot-password", authCtrl.forgotPassword);
 router.post("/auth/verify-otp", authCtrl.verifyResetOtp);

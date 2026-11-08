@@ -81,7 +81,7 @@ export const AdminPlayersPage: React.FC = () => {
       const token =
         localStorage.getItem("lordz_admin_token") ||
         localStorage.getItem("token") ||
-        "demo-admin-token";
+        "";
 
       const headers: Record<string, string> = {};
       if (token) {
@@ -90,6 +90,7 @@ export const AdminPlayersPage: React.FC = () => {
 
       const res = await fetch(getApiUrl("/upload"), {
         method: "POST",
+        credentials: "include",
         headers,
         body: uploadData,
       });

@@ -52,8 +52,92 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
     const { identifier, email, password } = loginSchema.parse(req.body);
     const loginId = (identifier || email || "").toLowerCase().trim();
 
-    if (!loginId) {
-      res.status(400).json({ success: false, message: "Please provide your username or email" });
+    if (!loginId || !password) {
+      res.status(401).json({ success: false, message: "Invalid email or password" });
+      return;
+    }
+
+    const adminEmail = (process.env.ADMIN_EMAIL || "admin@lordz.gg").toLowerCase().trim();
+    const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH;
+
+    // Check if logging in as Admin
+    if (loginId === adminEmail) {
+      let isMatch = false;
+      if (adminPasswordHash) {
+        isMatch = await bcrypt.compare(password, adminPasswordHash);
+      }
+
+      let user = await prisma.user.findUnique({
+        where: { email: adminEmail },
+      });
+
+      if (!isMatch && user && user.passwordHash) {
+        isMatch = await bcrypt.compare(password, user.passwordHash);
+      }
+
+      if (!isMatch) {
+        res.status(401).json({ success: false, message: "Invalid email or password" });
+        return;
+      }
+
+      if (!user) {
+        user = await prisma.user.create({
+          data: {
+            email: adminEmail,
+            passwordHash: adminPasswordHash || (await bcrypt.hash(password, 10)),
+            role: "ADMIN",
+            username: "admin",
+            fullName: "Lord Administrator",
+            ign: "LORD_ADMIN",
+          },
+        });
+      } else if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { role: "ADMIN" },
+        });
+      }
+
+      const payload = {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+        ign: user.ign,
+      };
+
+      const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });
+
+      res.cookie("token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        sameSite: "lax",
+      });
+
+      res.json({
+        success: true,
+        message: "Login successful",
+        token,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          role: user.role,
+          ign: user.ign,
+          gameUid: user.gameUid,
+          fullName: user.fullName,
+          avatarUrl: user.avatarUrl,
+          phone: user.phone,
+          discord: user.discord,
+          gamingExperience: user.gamingExperience,
+          primaryGame: user.primaryGame,
+          device: user.device,
+          bio: user.bio,
+          status: user.status,
+          createdAt: user.createdAt,
+        },
+      });
       return;
     }
 
@@ -69,7 +153,7 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
     });
 
     if (!user) {
-      res.status(401).json({ success: false, message: "Invalid username/email or password" });
+      res.status(401).json({ success: false, message: "Invalid email or password" });
       return;
     }
 
@@ -80,7 +164,7 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
 
     const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) {
-      res.status(401).json({ success: false, message: "Invalid username/email or password" });
+      res.status(401).json({ success: false, message: "Invalid email or password" });
       return;
     }
 

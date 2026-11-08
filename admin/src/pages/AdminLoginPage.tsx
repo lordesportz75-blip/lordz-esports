@@ -25,48 +25,30 @@ export const AdminLoginPage: React.FC = () => {
       const res = await fetch(getApiUrl("/auth/login"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email, password }),
       });
 
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok || !data.success) {
-        setError(data.message || "Invalid email or password. Check credentials.");
+        setError(data.message || "Invalid email or password");
         return;
       }
 
       // Verify that user has an administrative role
-      if (data.user.role === "PLAYER") {
+      if (data.user?.role === "PLAYER") {
         setError("Access denied: Athlete accounts cannot enter the Admin Portal.");
         return;
       }
 
       login(data.token, data.user);
       navigate(from, { replace: true });
-    } catch (err: any) {
-      // Offline fallback: ONLY when backend network fetch itself fails (e.g. server offline)
-      if (email === "admin@lordz.gg" && (password === "Admin@2026" || password === "LordzAdmin2026!")) {
-        login("demo-admin-token", {
-          id: "4a8879b4-c0a4-40c4-bce6-181b496bec6f",
-          email: "admin@lordz.gg",
-          role: "SUPER_ADMIN",
-          fullName: "Lord Administrator",
-          ign: "LORD_OVERLORD",
-        });
-        navigate(from, { replace: true });
-        return;
-      }
-
-      setError(err.message || "Backend server unreachable. Make sure 'npm run dev' is running in the /server directory.");
+    } catch {
+      setError("Unable to connect to the authentication server. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const fillDemo = () => {
-    setEmail("admin@lordz.gg");
-    setPassword("Admin@2026");
-    setError(null);
   };
 
   return (
@@ -112,7 +94,7 @@ export const AdminLoginPage: React.FC = () => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@lordz.gg"
+                  placeholder="Enter admin email"
                   className="w-full rounded-xl border border-white/15 bg-black/60 pl-11 pr-4 py-3 text-sm text-white placeholder-gray-500 focus:border-[#FFBE32] focus:ring-1 focus:ring-[#FFBE32] focus:outline-none transition-all"
                 />
               </div>
@@ -156,20 +138,6 @@ export const AdminLoginPage: React.FC = () => {
               </button>
             </div>
           </form>
-
-          {/* Instant One-Click Demo Credentials */}
-          <div className="mt-6 pt-6 border-t border-white/10">
-            <span className="block text-[10px] font-heading font-bold uppercase tracking-widest text-gray-400 text-center mb-3">
-              One-Click Demo Credentials
-            </span>
-            <button
-              type="button"
-              onClick={fillDemo}
-              className="w-full py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-[#FFBE32]/30 text-xs font-mono font-bold text-[#FFBE32] text-center hover:border-[#FFBE32] transition-all cursor-pointer shadow-[0_0_15px_rgba(255,190,50,0.15)]"
-            >
-              ⚡ Admin Demo (Instant Fill)
-            </button>
-          </div>
         </div>
 
         {/* Back Link */}

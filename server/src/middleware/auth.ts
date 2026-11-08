@@ -32,18 +32,6 @@ export const authenticate = (
     return;
   }
 
-  // Development bypass for demo-admin-token or offline fallback
-  if (token === "demo-admin-token" && process.env.NODE_ENV !== "production") {
-    req.user = {
-      id: "4a8879b4-c0a4-40c4-bce6-181b496bec6f",
-      email: "admin@lordz.gg",
-      role: "ADMIN",
-      ign: "LORDZ_OVERLORD",
-    };
-    next();
-    return;
-  }
-
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as AuthUser;
     req.user = decoded;

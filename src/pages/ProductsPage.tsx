@@ -24,19 +24,13 @@ import {
   Phone,
   Mail,
   MapPin,
+  PackageOpen,
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { merchandiseApi, type ProductItem as ApiProductItem, type OrderItem } from "../api/merchandise";
 import { useAuth } from "../context/AuthContext";
 import { SEO } from "../components/common/SEO";
 import { SITE_URL } from "../config/seo";
-
-// Fallback Product Assets
-import jerseyFrontImg from "../assets/jersey-front.jpg";
-import hoodieImg from "../assets/product-hoodie.jpg";
-import mousepadImg from "../assets/product-mousepad.jpg";
-import capImg from "../assets/product-cap.jpg";
-import sleeveImg from "../assets/product-sleeve.jpg";
 import { LazyProductImage } from "../components/common/LazyProductImage";
 import { getProductFallbackImage, optimizeCloudinaryUrl } from "../utils/imageOptimizer";
 
@@ -55,109 +49,6 @@ export interface LocalProductItem {
   upiId?: string;
   upiQrImage?: string;
 }
-
-const fallbackCatalog: LocalProductItem[] = [
-  {
-    id: "lordz-pro-jersey-2026",
-    name: "LORD PRO COMBAT JERSEY 2026",
-    category: "JERSEYS",
-    tag: "OFFICIAL ATHLETE SPEC",
-    price: 1299,
-    originalPrice: 1999,
-    image: jerseyFrontImg,
-    description:
-      "The official uniform worn by LORD ESPORTZ athletes in national tournaments. Crafted with Dravidian temple art motifs, moisture-wicking micro-poly, and customized athlete IGN print.",
-    specs: [
-      "100% Breathable Micro-Poly Waffle Knit",
-      "Official Clan Squad IGN & Number Print",
-      "Fade-Resistant Sublimation Art",
-      "Tournament-Certified Anti-Static Fit",
-    ],
-    sizes: ["S", "M", "L", "XL", "2XL"],
-    hasCustomIgn: true,
-    upiId: "lordzesports@upi",
-  },
-  {
-    id: "lordz-stealth-hoodie",
-    name: "LORD STEALTH PRO FLEECE HOODIE",
-    category: "APPAREL",
-    tag: "LIMITED WINTER DROP",
-    price: 2199,
-    originalPrice: 2999,
-    image: hoodieImg,
-    description:
-      "Heavyweight 420 GSM French Terry fleece hoodie featuring high-density 3D metallic gold embroidered Lord clan crest, double-layered drawstring hood, and ribbed cuffs.",
-    specs: [
-      "420 GSM Heavy French Terry Cotton",
-      "Metallic Gold Embroidered Crest",
-      "Double-Lined Heavyweight Hood",
-      "Oversized Relaxed Esports Silhouette",
-    ],
-    sizes: ["M", "L", "XL", "2XL"],
-    hasCustomIgn: false,
-    upiId: "lordzesports@upi",
-  },
-  {
-    id: "lordz-speed-mousepad-xxl",
-    name: "LORD SPEED XXL GAMING MOUSEPAD (900x400MM)",
-    category: "GEAR",
-    tag: "BESTSELLER",
-    price: 899,
-    originalPrice: 1499,
-    image: mousepadImg,
-    description:
-      "4mm thick high-density rubber desk mat with micro-woven cloth surface engineered for ultra-fast glide and stopping power. Features radiant gold dragon & Dravidian battle artwork.",
-    specs: [
-      "900 x 400 x 4 mm XXL Coverage",
-      "Micro-Woven Low-Friction Surface",
-      "Anti-Fray Precision Gold Stitched Edge",
-      "Non-Slip Textured Natural Rubber Base",
-    ],
-    sizes: ["XXL (900x400mm)"],
-    hasCustomIgn: false,
-    upiId: "lordzesports@upi",
-  },
-  {
-    id: "lordz-tactical-cap",
-    name: "LORD TACTICAL SNAPBACK PRO CAP",
-    category: "GEAR",
-    tag: "CLAN CREST",
-    price: 649,
-    originalPrice: 999,
-    image: capImg,
-    description:
-      "Structured 6-panel snapback cap in matte obsidian black with gold 3D raised embroidery and custom Dravidian brim under-print. Adjustable rear strap for all head sizes.",
-    specs: [
-      "Structured 6-Panel High Crown Fit",
-      "High-Density 3D Gold Embroidered Logo",
-      "Sublimated Dravidian Artwork Underbrim",
-      "Heavy-Duty Adjustable Snap Closure",
-    ],
-    sizes: ["Adjustable Snapback (One Size)"],
-    hasCustomIgn: false,
-    upiId: "lordzesports@upi",
-  },
-  {
-    id: "lordz-compression-sleeves",
-    name: "LORD ARM COMPRESSION GAMING SLEEVES (PAIR)",
-    category: "GEAR",
-    tag: "COMPETITION SPEC",
-    price: 499,
-    originalPrice: 799,
-    image: sleeveImg,
-    description:
-      "Precision friction-reducing esports compression sleeves engineered to prevent desk drag on cloth and glass mousepads. Keeps arm muscles warm and reduces fatigue during 8-hour scrim blocks.",
-    specs: [
-      "Seamless Low-Friction Spandex Weave",
-      "Graduated Compression Muscle Support",
-      "Silicone Anti-Slip Upper Bicep Band",
-      "Rapid-Dry Moisture Management",
-    ],
-    sizes: ["S/M", "L/XL"],
-    hasCustomIgn: false,
-    upiId: "lordzesports@upi",
-  },
-];
 
 function resolveProductImage(p: ApiProductItem): string {
   if (p.frontImage) return optimizeCloudinaryUrl(p.frontImage, 800);
@@ -183,7 +74,8 @@ function parseSizes(sizesString?: string | null): string[] {
 }
 
 export const ProductsPage = () => {
-  const [products, setProducts] = useState<LocalProductItem[]>(fallbackCatalog);
+  const [products, setProducts] = useState<LocalProductItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   const [orderModalOpen, setOrderModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<LocalProductItem | null>(null);
@@ -287,7 +179,7 @@ export const ProductsPage = () => {
     merchandiseApi
       .getProducts()
       .then((data) => {
-        if (data && data.length > 0) {
+        if (Array.isArray(data) && data.length > 0) {
           const mapped: LocalProductItem[] = data.map((p) => {
             const rawCat = (p.category || "JERSEY").toUpperCase();
             let cat = "JERSEYS";
@@ -312,10 +204,15 @@ export const ProductsPage = () => {
             };
           });
           setProducts(mapped);
+        } else {
+          setProducts([]);
         }
       })
       .catch(() => {
-        setProducts(fallbackCatalog);
+        setProducts([]);
+      })
+      .finally(() => {
+        setLoading(false);
       });
   };
 
@@ -743,120 +640,145 @@ export const ProductsPage = () => {
           </motion.div>
         </div>
 
-        {/* Category Filters */}
-        <div className="flex flex-wrap items-center justify-center gap-3 mb-12">
-          {[
-            { label: "ALL PRODUCTS", key: "ALL" },
-            { label: "PRO JERSEYS", key: "JERSEYS" },
-            { label: "CLAN APPAREL", key: "APPAREL" },
-            { label: "GAMING GEAR & ACCESSORIES", key: "GEAR" },
-          ].map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setSelectedCategory(tab.key)}
-              className={`px-5 py-2.5 rounded-xl text-xs font-heading font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                selectedCategory === tab.key
-                  ? "bg-[#FFBE32] text-black shadow-[0_0_20px_rgba(255,190,50,0.35)] font-extrabold"
-                  : "bg-[#0f0f14] text-gray-400 hover:text-white border border-white/5"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {/* Category Filters (Only shown when products exist) */}
+        {products.length > 0 && (
+          <div className="flex flex-wrap items-center justify-center gap-3 mb-12">
+            {[
+              { label: "ALL PRODUCTS", key: "ALL" },
+              { label: "PRO JERSEYS", key: "JERSEYS" },
+              { label: "CLAN APPAREL", key: "APPAREL" },
+              { label: "GAMING GEAR & ACCESSORIES", key: "GEAR" },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setSelectedCategory(tab.key)}
+                className={`px-5 py-2.5 rounded-xl text-xs font-heading font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                  selectedCategory === tab.key
+                    ? "bg-[#FFBE32] text-black shadow-[0_0_20px_rgba(255,190,50,0.35)] font-extrabold"
+                    : "bg-[#0f0f14] text-gray-400 hover:text-white border border-white/5"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
 
-        {/* Products Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredProducts.map((product, index) => (
-            <motion.div
-              key={product.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: index * 0.08 }}
-              whileHover={{ y: -6 }}
-              className="group relative rounded-2xl bg-[#0D0D12] border border-white/10 hover:border-[#FFBE32]/60 overflow-hidden flex flex-col justify-between transition-all duration-300 shadow-[0_10px_30px_rgba(0,0,0,0.8)] hover:shadow-[0_15px_40px_rgba(255,190,50,0.15)]"
-            >
-              {/* Product Image Container */}
-              <div className="relative h-56 xs:h-64 sm:h-80 w-full overflow-hidden bg-black/60 flex items-center justify-center p-4">
-                <div className="absolute top-4 left-4 z-20">
-                  <span className="px-3 py-1 rounded-md bg-black/85 border border-[#FFBE32]/40 text-[10px] font-heading font-bold uppercase tracking-wider text-[#FFBE32]">
-                    {product.tag}
-                  </span>
-                </div>
-
-                <LazyProductImage
-                  src={product.image}
-                  alt={product.name}
-                  fallbackSrc={getProductFallbackImage(product.name)}
-                  className="max-h-full max-w-full object-contain filter group-hover:scale-105 transition-transform duration-500 drop-shadow-[0_10px_25px_rgba(0,0,0,0.8)]"
-                  width={800}
-                />
-
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0D0D12] via-transparent to-transparent pointer-events-none" />
-              </div>
-
-              {/* Content */}
-              <div className="p-6 sm:p-7 flex-1 flex flex-col justify-between space-y-4">
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="text-[10px] font-heading font-bold uppercase tracking-widest text-gray-500">
-                      {product.category}
-                    </span>
-                    <span className="text-[11px] font-mono text-emerald-400 flex items-center gap-1">
-                      <ShieldCheck className="h-3.5 w-3.5" />
-                      <span>IN STOCK</span>
+        {/* Products Display / Loading / Empty State */}
+        {loading ? (
+          <div className="min-h-[30vh] flex flex-col items-center justify-center py-20">
+            <div className="h-10 w-10 border-2 border-[#FFBE32] border-t-transparent rounded-full animate-spin mb-4" />
+            <span className="text-xs font-mono text-gray-500 uppercase tracking-widest">Loading Products...</span>
+          </div>
+        ) : products.length === 0 ? (
+          <div className="py-20 px-6 text-center flex flex-col items-center justify-center rounded-3xl bg-[#0C0C10] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.8)] max-w-xl mx-auto my-6">
+            <div className="h-20 w-20 rounded-2xl bg-[#FFBE32]/10 border border-[#FFBE32]/30 flex items-center justify-center text-[#FFBE32] mb-6 shadow-[0_0_30px_rgba(255,190,50,0.15)]">
+              <PackageOpen className="h-10 w-10" />
+            </div>
+            <h2 className="font-display text-2xl sm:text-3xl uppercase tracking-wider text-white">
+              No Products Available
+            </h2>
+            <p className="mt-3 text-sm text-gray-400 font-body max-w-md leading-relaxed">
+              New merchandise is coming soon. Check back later.
+            </p>
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="py-16 text-center text-gray-400 font-body">
+            No products found in this category.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredProducts.map((product, index) => (
+              <motion.div
+                key={product.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: index * 0.08 }}
+                whileHover={{ y: -6 }}
+                className="group relative rounded-2xl bg-[#0D0D12] border border-white/10 hover:border-[#FFBE32]/60 overflow-hidden flex flex-col justify-between transition-all duration-300 shadow-[0_10px_30px_rgba(0,0,0,0.8)] hover:shadow-[0_15px_40px_rgba(255,190,50,0.15)]"
+              >
+                {/* Product Image Container */}
+                <div className="relative h-56 xs:h-64 sm:h-80 w-full overflow-hidden bg-black/60 flex items-center justify-center p-4">
+                  <div className="absolute top-4 left-4 z-20">
+                    <span className="px-3 py-1 rounded-md bg-black/85 border border-[#FFBE32]/40 text-[10px] font-heading font-bold uppercase tracking-wider text-[#FFBE32]">
+                      {product.tag}
                     </span>
                   </div>
 
-                  <h3 className="font-display text-xl sm:text-2xl font-bold uppercase tracking-wider text-white group-hover:text-[#FFBE32] transition-colors leading-tight">
-                    {product.name}
-                  </h3>
+                  <LazyProductImage
+                    src={product.image}
+                    alt={product.name}
+                    fallbackSrc={getProductFallbackImage(product.name)}
+                    className="max-h-full max-w-full object-contain filter group-hover:scale-105 transition-transform duration-500 drop-shadow-[0_10px_25px_rgba(0,0,0,0.8)]"
+                    width={800}
+                  />
 
-                  <p className="mt-2 text-xs text-gray-400 font-body line-clamp-2 leading-relaxed">
-                    {product.description}
-                  </p>
-
-                  <div className="mt-3.5 space-y-1.5">
-                    {product.specs.slice(0, 2).map((sp, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-2 text-[11px] text-gray-300 font-body"
-                      >
-                        <Check className="h-3 w-3 text-[#FFBE32] shrink-0" />
-                        <span className="truncate">{sp}</span>
-                      </div>
-                    ))}
-                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0D0D12] via-transparent to-transparent pointer-events-none" />
                 </div>
 
-                {/* Pricing & CTA */}
-                <div className="pt-4 border-t border-white/10 flex items-center justify-between">
+                {/* Content */}
+                <div className="p-6 sm:p-7 flex-1 flex flex-col justify-between space-y-4">
                   <div>
-                    <div className="flex items-baseline gap-2">
-                      <span className="font-display text-2xl font-extrabold text-[#FFBE32]">
-                        ₹{product.price.toLocaleString("en-IN")}
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="text-[10px] font-heading font-bold uppercase tracking-widest text-gray-500">
+                        {product.category}
                       </span>
-                      <span className="text-xs text-gray-500 line-through font-mono">
-                        ₹{product.originalPrice.toLocaleString("en-IN")}
+                      <span className="text-[11px] font-mono text-emerald-400 flex items-center gap-1">
+                        <ShieldCheck className="h-3.5 w-3.5" />
+                        <span>IN STOCK</span>
                       </span>
                     </div>
-                    <span className="text-[10px] font-mono text-emerald-400 uppercase">
-                      UPI / Cash on Delivery
-                    </span>
+
+                    <h3 className="font-display text-xl sm:text-2xl font-bold uppercase tracking-wider text-white group-hover:text-[#FFBE32] transition-colors leading-tight">
+                      {product.name}
+                    </h3>
+
+                    <p className="mt-2 text-xs text-gray-400 font-body line-clamp-2 leading-relaxed">
+                      {product.description}
+                    </p>
+
+                    <div className="mt-3.5 space-y-1.5">
+                      {product.specs.slice(0, 2).map((sp, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center gap-2 text-[11px] text-gray-300 font-body"
+                        >
+                          <Check className="h-3 w-3 text-[#FFBE32] shrink-0" />
+                          <span className="truncate">{sp}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
-                  <button
-                    onClick={() => handleOpenBuy(product)}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#FFBE32] hover:bg-[#FFA000] text-black font-heading text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shadow-[0_0_15px_rgba(255,190,50,0.3)] group-hover:shadow-[0_0_25px_rgba(255,190,50,0.5)]"
-                  >
-                    <ShoppingBag className="h-3.5 w-3.5" />
-                    <span>Order Now</span>
-                  </button>
+                  {/* Pricing & CTA */}
+                  <div className="pt-4 border-t border-white/10 flex items-center justify-between">
+                    <div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="font-display text-2xl font-extrabold text-[#FFBE32]">
+                          ₹{product.price.toLocaleString("en-IN")}
+                        </span>
+                        <span className="text-xs text-gray-500 line-through font-mono">
+                          ₹{product.originalPrice.toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono text-emerald-400 uppercase">
+                        UPI / Cash on Delivery
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => handleOpenBuy(product)}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#FFBE32] hover:bg-[#FFA000] text-black font-heading text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shadow-[0_0_15px_rgba(255,190,50,0.3)] group-hover:shadow-[0_0_25px_rgba(255,190,50,0.5)]"
+                    >
+                      <ShoppingBag className="h-3.5 w-3.5" />
+                      <span>Order Now</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
 
         {/* Armory Trust Badges */}
         <div className="mt-20 grid grid-cols-1 sm:grid-cols-3 gap-6 p-6 sm:p-8 rounded-2xl bg-[#0D0D12] border border-white/10 text-center sm:text-left">

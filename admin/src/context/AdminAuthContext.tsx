@@ -29,42 +29,40 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   useEffect(() => {
     const checkAuth = async () => {
       const storedToken = localStorage.getItem("lordz_admin_token");
-      const storedUser = localStorage.getItem("lordz_admin_user");
 
       if (!storedToken) {
         setIsLoading(false);
         return;
       }
 
-      if (storedUser) {
-        try {
-          setUser(JSON.parse(storedUser));
-        } catch {
-          // ignore
-        }
-      }
-
       try {
         const res = await fetch(getApiUrl("/auth/me"), {
           headers: { Authorization: `Bearer ${storedToken}` },
+          credentials: "include",
         });
 
         if (res.ok) {
           const data = await res.json();
-          if (data.user) {
+          if (data.user && ["ADMIN", "SUPER_ADMIN", "TOURNAMENT_ADMIN", "CONTENT_EDITOR"].includes(data.user.role)) {
             setUser(data.user);
             localStorage.setItem("lordz_admin_user", JSON.stringify(data.user));
+          } else {
+            localStorage.removeItem("lordz_admin_token");
+            localStorage.removeItem("lordz_admin_user");
+            setToken(null);
+            setUser(null);
           }
-        } else if (res.status === 401) {
-          // Token expired
+        } else {
           localStorage.removeItem("lordz_admin_token");
           localStorage.removeItem("lordz_admin_user");
           setToken(null);
           setUser(null);
         }
-      } catch (err) {
-        // Offline or dev fallback: if stored user exists, keep it
-        console.warn("Backend auth verification check offline, using local cached session.");
+      } catch {
+        localStorage.removeItem("lordz_admin_token");
+        localStorage.removeItem("lordz_admin_user");
+        setToken(null);
+        setUser(null);
       } finally {
         setIsLoading(false);
       }
@@ -85,7 +83,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setUser(null);
     localStorage.removeItem("lordz_admin_token");
     localStorage.removeItem("lordz_admin_user");
-    fetch(getApiUrl("/auth/logout"), { method: "POST" }).catch(() => {});
+    fetch(getApiUrl("/auth/logout"), { method: "POST", credentials: "include" }).catch(() => {});
   };
 
   return (

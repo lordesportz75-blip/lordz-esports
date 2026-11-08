@@ -442,12 +442,13 @@ export const tournamentsApi = {
     const token =
       localStorage.getItem("lordz_admin_token") ||
       localStorage.getItem("token") ||
-      ((import.meta as any).env?.DEV ? "demo-admin-token" : "");
+      "";
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
     const res = await fetch(getApiUrl("/upload"), {
       method: "POST",
+      credentials: "include",
       headers,
       body: formData,
     });

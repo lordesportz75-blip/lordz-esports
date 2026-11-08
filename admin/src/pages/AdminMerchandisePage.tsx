@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { merchandiseApi, type ProductItem, fallbackProducts } from "../api/merchandise";
+import { merchandiseApi, type ProductItem } from "../api/merchandise";
 import { adminApi } from "../api/admin";
 import {
   Plus,
@@ -54,9 +54,9 @@ export const AdminMerchandisePage: React.FC = () => {
     setLoading(true);
     try {
       const data = await merchandiseApi.getProducts();
-      setProducts(data && data.length > 0 ? data : fallbackProducts);
+      setProducts(Array.isArray(data) ? data : []);
     } catch {
-      setProducts(fallbackProducts);
+      setProducts([]);
     } finally {
       setLoading(false);
     }

@@ -3,7 +3,6 @@ import { NewsSection } from "../sections/NewsSection";
 import { useModals } from "../context/useModals";
 import { SEO } from "../components/common/SEO";
 import { SITE_URL } from "../config/seo";
-import { newsData } from "../data/news";
 
 export const NewsPage = () => {
   const { openArticle } = useModals();
@@ -14,28 +13,8 @@ export const NewsPage = () => {
     name: "LORD ESPORTZ News & Dispatches",
     description: "Official competitive reports and announcements from LORD ESPORTZ.",
     url: `${SITE_URL}/news`,
-    numberOfItems: newsData.length,
-    itemListElement: newsData.map((item, idx) => ({
-      "@type": "ListItem",
-      position: idx + 1,
-      item: {
-        "@type": "NewsArticle",
-        headline: item.title,
-        description: item.excerpt,
-        datePublished: "2026-09-12",
-        author: {
-          "@type": "Organization",
-          name: "LORD ESPORTZ",
-          url: SITE_URL,
-        },
-        publisher: {
-          "@type": "Organization",
-          name: "LORD ESPORTZ",
-          url: SITE_URL,
-        },
-        image: item.coverImage || item.image || `${SITE_URL}/og-image.jpg`,
-      },
-    })),
+    numberOfItems: 0,
+    itemListElement: [],
   };
 
   return (

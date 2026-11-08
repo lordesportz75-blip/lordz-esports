@@ -23,34 +23,13 @@ export const AdminUsersPage: React.FC = () => {
     discord: "",
   });
 
-  const sampleFallbackAdmins: AdminUserItem[] = [
-    {
-      id: "admin-1",
-      email: "admin@lordz.gg",
-      fullName: "Lord Administrator",
-      role: "ADMIN",
-      status: "ACTIVE",
-      phone: "+91 98765 00001",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "admin-2",
-      email: "tournaments@lordz.gg",
-      fullName: "Tournament Ops Admin",
-      role: "ADMIN",
-      status: "ACTIVE",
-      phone: "+91 98765 00002",
-      createdAt: new Date().toISOString(),
-    },
-  ];
-
   const loadAdmins = async () => {
     setLoading(true);
     try {
       const data = await adminApi.getAdminUsers();
-      setAdminUsers(data && data.length > 0 ? data : sampleFallbackAdmins);
+      setAdminUsers(Array.isArray(data) ? data : []);
     } catch {
-      setAdminUsers(sampleFallbackAdmins);
+      setAdminUsers([]);
     } finally {
       setLoading(false);
     }

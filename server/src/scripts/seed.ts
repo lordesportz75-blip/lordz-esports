@@ -5,11 +5,11 @@ async function main() {
   console.log("🌱 Starting Lord Esports database seeding...");
 
   // 1. Create Super Admin
-  const adminSalt = await bcrypt.genSalt(10);
-  const adminHash = await bcrypt.hash("LordzAdmin2026!", adminSalt);
+  const adminEmail = process.env.ADMIN_EMAIL || "admin@lordz.gg";
+  const adminHash = process.env.ADMIN_PASSWORD_HASH || (await bcrypt.hash("heyramlord28", 10));
 
   const superAdmin = await prisma.user.upsert({
-    where: { email: "admin@lordz.gg" },
+    where: { email: adminEmail },
     update: {
       passwordHash: adminHash,
       role: "ADMIN",
@@ -17,7 +17,7 @@ async function main() {
       fullName: "Lordz Administrator",
     },
     create: {
-      email: "admin@lordz.gg",
+      email: adminEmail,
       passwordHash: adminHash,
       role: "ADMIN",
       ign: "LORDZ_OVERLORD",
@@ -26,7 +26,7 @@ async function main() {
       discord: "admin#0001",
     },
   });
-  console.log("✅ Admin created: admin@lordz.gg (Password: LordzAdmin2026!)");
+  console.log(`✅ Admin verified: ${adminEmail}`);
 
   // 2. Additional Admin Account
   await prisma.user.upsert({
@@ -402,203 +402,10 @@ async function main() {
   }
   console.log(`✅ Seeded ${legends.length} Hall of Fame Legends`);
 
-  // 9. Seed Merchandise Products
-  const products = [
-    {
-      id: "lordz-pro-jersey-2026",
-      name: "LORDZ PRO COMBAT JERSEY 2026",
-      slug: "lordz-pro-jersey-2026",
-      subtitle: "Official 2026-27 Athlete Edition • Black & Gold Temple Dravidian Edition",
-      description: "Engineered for high-pressure competition. Crafted with breathable micro-poly, Dravidian temple gopuram architectural line art, and battle flame aesthetics.",
-      price: 1299,
-      originalPrice: 1999,
-      stock: 150,
-      category: "JERSEY",
-      sizes: JSON.stringify(["S", "M", "L", "XL", "2XL"]),
-      isAvailable: true,
-      isFeatured: true,
-    },
-    {
-      id: "lordz-stealth-hoodie",
-      name: "LORDZ STEALTH CLAN HOODIE",
-      slug: "lordz-stealth-hoodie",
-      subtitle: "Heavyweight 380 GSM Fleece with Metallic Gold Crest",
-      description: "Premium fleece pullover with gold-embroidered Lordz crest, kangaroo pocket, and thumbhole cuffs.",
-      price: 2499,
-      originalPrice: 3299,
-      stock: 75,
-      category: "HOODIE",
-      sizes: JSON.stringify(["M", "L", "XL", "2XL"]),
-      isAvailable: true,
-      isFeatured: false,
-    },
-    {
-      id: "lordz-pro-compression-sleeves",
-      name: "LORDZ PRO ARM COMPRESSION SLEEVES",
-      slug: "lordz-pro-compression-sleeves",
-      subtitle: "Friction-Free Esports Gaming Sleeve Pair",
-      description: "Ultra-low friction gaming sleeves designed for glasspad and speed mousepad precision tracking.",
-      price: 499,
-      originalPrice: 799,
-      stock: 300,
-      category: "ACCESSORY",
-      sizes: JSON.stringify(["M", "L"]),
-      isAvailable: true,
-      isFeatured: false,
-    },
-  ];
+  // 9. Merchandise and News are managed purely dynamically through the Admin Portal.
+  // Template/mock products and articles have been removed as per production specifications.
 
-  for (const prod of products) {
-    await prisma.product.upsert({
-      where: { slug: prod.slug },
-      update: prod,
-      create: prod,
-    });
-  }
-  console.log(`✅ Seeded ${products.length} Merchandise products`);
-
-  // 10. Seed Sample Orders
-  const sampleOrders = [
-    {
-      orderNumber: "LZ-2026-1042",
-      productName: "LORDZ PRO COMBAT JERSEY 2026",
-      customerName: "Rahul Verma",
-      customerEmail: "rahul.v@gmail.com",
-      customerPhone: "+91 98765 11223",
-      address: "Flat 402, Royal Palms, Anna Nagar",
-      city: "Chennai",
-      state: "Tamil Nadu",
-      pincode: "600040",
-      size: "L",
-      customIgn: "BEAST",
-      customNumber: "00",
-      totalAmount: 1299,
-      paymentMethod: "ONLINE",
-      paymentStatus: "PAID",
-      orderStatus: "SHIPPED",
-      trackingNumber: "DTDC-TN-992140",
-    },
-    {
-      orderNumber: "LZ-2026-1088",
-      productName: "LORDZ PRO COMBAT JERSEY 2026",
-      customerName: "Sneha Reddy",
-      customerEmail: "sneha.r@gmail.com",
-      customerPhone: "+91 97890 33445",
-      address: "Plot 89, Jubilee Hills",
-      city: "Hyderabad",
-      state: "Telangana",
-      pincode: "500033",
-      size: "M",
-      customIgn: "SHADOW",
-      customNumber: "07",
-      totalAmount: 1299,
-      paymentMethod: "ONLINE",
-      paymentStatus: "PAID",
-      orderStatus: "PROCESSING",
-    },
-    {
-      orderNumber: "LZ-2026-1120",
-      productName: "LORDZ PRO COMBAT JERSEY 2026",
-      customerName: "Amitabh Sen",
-      customerEmail: "amitabh@outlook.com",
-      customerPhone: "+91 99112 88776",
-      address: "14/B Park Street",
-      city: "Kolkata",
-      state: "West Bengal",
-      pincode: "700016",
-      size: "XL",
-      customIgn: "CLUTCH_GOD",
-      customNumber: "99",
-      totalAmount: 1299,
-      paymentMethod: "ONLINE",
-      paymentStatus: "PAID",
-      orderStatus: "PENDING",
-    },
-  ];
-
-  for (const ord of sampleOrders) {
-    await prisma.order.upsert({
-      where: { orderNumber: ord.orderNumber },
-      update: ord,
-      create: ord,
-    });
-  }
-  console.log(`✅ Seeded ${sampleOrders.length} Sample Orders`);
-
-  // 11. Seed News Articles
-  const articles = [
-    {
-      id: "news-1",
-      title: "FLAME OF GLORY S2 GRAND FINALS COMMENCES WITH ₹50,000 AT STAKE",
-      slug: "flame-of-glory-s2-grand-finals",
-      coverImage: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1200&q=80",
-      excerpt: "32 of the sharpest mobile esports squads converge in a 6-round showdown. Lord Esports enters as the heavyweight contender.",
-      content: "The battle lines are drawn as Flame of Glory Season 2 reaches its climax. Over 32 verified Tier-1 squads have fought through grueling qualifiers across 4 regional brackets to earn their spots in the Grand Finals. With a total prize purse of ₹50,000 and the prestigious Flame of Glory trophy on the line, every point, every frag, and every late-game rotation will determine the legacy of this season.\n\nLord Esports enters the finals holding the #1 seed following a dominant group-stage run led by IGL Beast. Official broadcast coverage begins at 18:00 IST with multi-cam casters and real-time telemetry streaming live on our YouTube and partner channels.",
-      category: "TOURNAMENT",
-      date: "SEP 12, 2026",
-      readTime: "3 MIN READ",
-      badgeColor: "bg-amber-500/20 text-amber-400 border-amber-500/30",
-      author: "Lord Editorial",
-      published: true,
-      featured: true,
-    },
-    {
-      id: "news-2",
-      title: "OFFICIAL REVEAL: THE 2026-27 LORD PRO JERSEY UNVEILED",
-      slug: "2026-27-lord-pro-jersey-unveiled",
-      coverImage: "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1200&q=80",
-      excerpt: "Crafted with temple gopuram gold line art and battle flame motifs, representing the warrior heritage of South Indian competitive gaming.",
-      content: "Today, Lord Esports proudly unveils the official 2026-27 Pro Combat Jersey, built in partnership with leading performance apparel designers. Incorporating traditional Tamil temple gopuram golden vectors merged with aerodynamic honeycomb moisture-wicking weave, the new kit symbolizes our unwavering ambition to dominate both national and international tournaments.\n\nPre-orders for the limited Supporter Edition are now officially open with customized gamer tags on the back. Clan members and community champions will receive priority dispatch before the first live LAN tournament.",
-      category: "TEAM",
-      date: "SEP 10, 2026",
-      readTime: "2 MIN READ",
-      badgeColor: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
-      author: "Branding Desk",
-      published: true,
-      featured: false,
-    },
-    {
-      id: "news-3",
-      title: "BEAST NAMED IGL OF THE MONTH AFTER RECORD-BREAKING CLUTCHES",
-      slug: "beast-igl-of-the-month",
-      coverImage: "https://images.unsplash.com/photo-1538481199705-c710c4e965fc?auto=format&fit=crop&w=1200&q=80",
-      excerpt: "With a 4.82 K/D and unmatched late-circle tactical rotations, Beast leads Lord Esports into the championship tier.",
-      content: "Following an electrifying month of competitive play, our primary In-Game Leader 'Beast' has officially been awarded IGL of the Month by the national esports circuit. Across 28 tournament matches, Beast delivered a record-setting 4.82 K/D ratio, over 14,000 total damage output, and led the roster through four consecutive 1v3 final circle clutches.\n\n'This recognition belongs to the whole squad,' Beast commented. 'Our synergy, callouts, and scrim discipline have leveled up tremendously. We are hungry for the national trophy.'",
-      category: "PLAYER",
-      date: "SEP 05, 2026",
-      readTime: "4 MIN READ",
-      badgeColor: "bg-orange-500/20 text-orange-400 border-orange-500/30",
-      author: "Scouting Team",
-      published: true,
-      featured: false,
-    },
-    {
-      id: "news-4",
-      title: "TIER-1 DAILY SCRIMS PROGRAM PASSES 500+ VERIFIED PLAYERS",
-      slug: "tier-1-scrims-500-verified-players",
-      coverImage: "https://images.unsplash.com/photo-1560253023-3ec5d502959f?auto=format&fit=crop&w=1200&q=80",
-      excerpt: "Our Discord-integrated grassroots scrim infrastructure now hosts daily lobbies with live anti-cheat and automated scoreboard logging.",
-      content: "Lord Esports' dedicated Grassroots Scrim Initiative has crossed a landmark milestone of 500 verified players and 60 registered squads. Operating daily across 3 tiers (Tier-3 Challenger, Tier-2 Contender, Tier-1 Elite), our automated custom lobby system provides aspiring competitors with professional-grade competitive experience.\n\nTop-performing grassroots squads from weekly scoreboards earn direct invitations to showmatches and scouting trials with our academy coaches.",
-      category: "COMMUNITY",
-      date: "AUG 28, 2026",
-      readTime: "3 MIN READ",
-      badgeColor: "bg-neutral-800 text-neutral-300 border-neutral-700",
-      author: "Community Lead",
-      published: true,
-      featured: false,
-    },
-  ];
-
-  for (const art of articles) {
-    await prisma.newsArticle.upsert({
-      where: { slug: art.slug },
-      update: art,
-      create: art,
-    });
-  }
-  console.log(`✅ Seeded ${articles.length} News Articles`);
-
-  // 12. Seed Partners
+  // 10. Seed Partners
   const partners = [
     { id: "esports-pro", name: "ESPORTS PRO", category: "Tournament Platform", tier: "MAIN SPONSOR", logoImage: "/uploads/partner-esportspro.png", sortOrder: 1 },
     { id: "espotz-live", name: "ESPOTZ LIVE", category: "Livestream Production", tier: "BROADCAST PARTNER", logoImage: "/uploads/partner-espotz.png", sortOrder: 2 },

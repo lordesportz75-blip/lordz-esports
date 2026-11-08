@@ -130,9 +130,19 @@ export async function apiRequest<T = any>(
 
   try {
     const response = await fetch(url, {
+      credentials: "include",
       ...options,
       headers,
     });
+
+    if (response.status === 401) {
+      localStorage.removeItem("lordz_admin_token");
+      localStorage.removeItem("lordz_admin_user");
+      if (typeof window !== "undefined" && !window.location.pathname.includes("/login")) {
+        const loginPath = window.location.pathname.startsWith("/admin") ? "/admin/login" : "/login";
+        window.location.href = loginPath;
+      }
+    }
 
     const contentType = response.headers.get("content-type") || "";
     let json: ApiResponse<T>;
